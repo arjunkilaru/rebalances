@@ -42,7 +42,7 @@ def make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, fts
     finalpred = now.iloc[-1].dropna()
     finalpred = pd.DataFrame(finalpred).T
     probs = pd.DataFrame()
-    ps = [str(clf1.predict(finalpred)) + " Into Close", str(clf2.predict(finalpred)) + " Out of Close]
+    ps = [str(clf1.predict(finalpred)) + " Into Close", str(clf2.predict(finalpred)) + " Out of Close"]
     ls = [np.max(clf1.predict_proba(finalpred)), np.max(clf2.predict_proba(finalpred))]
     probs.index = ['Into Print', 'Out of Print']
     probs['Right Way'] = ps
