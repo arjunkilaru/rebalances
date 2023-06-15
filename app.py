@@ -193,10 +193,10 @@ app.layout = html.Div(children=[
      State('bs', 'value'),
      State('absv', 'value')]
 )
-def update_output(n_clicks, country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, value, shares, days, bs, absv):
+def update_output(n_clicks, country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, vl, shares, days, bs, absv):
     if n_clicks > 0:
         try:
-            df = make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, value, shares, days, bs, absv)
+            df = make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, vl, shares, days, bs, absv)
             return html.Table(
                 # Header
                 [html.Tr([html.Th(col) for col in df.columns])] +
