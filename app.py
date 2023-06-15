@@ -56,9 +56,6 @@ server = app.server
 app.layout = html.Div(children=[
     html.H1(children='Predictor'),
 
-app.layout = html.Div(children=[
-    html.H1(children='Predictor'),
-
     html.Div(children=[
         html.Div(children=[
             html.Label('Country:'),
