@@ -2,6 +2,7 @@ from dash import dcc, html, Dash, Input, Output, dash_table
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
+import sklearn
 from sklearn.ensemble import GradientBoostingClassifier
 
 def make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, vl, shares, days, bs, absv):
