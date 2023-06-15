@@ -103,82 +103,82 @@ app.layout = html.Div(children=[
 
         html.Div(children=[
             html.Label('AEX:'),
-            dcc.Input(id='aex', type='number'),
+            dcc.Input(id='aex', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('ASX:'),
-            dcc.Input(id='asx', type='number'),
+            dcc.Input(id='asx', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('DAX:'),
-            dcc.Input(id='dax', type='number'),
+            dcc.Input(id='dax', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('FC50:'),
-            dcc.Input(id='fc50', type='number'),
+            dcc.Input(id='fc50', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('FTSE_EPRA:'),
-            dcc.Input(id='ftse_epra', type='number'),
+            dcc.Input(id='ftse_epra', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('FTSE_GEIS:'),
-            dcc.Input(id='ftse_geis', type='number'),
+            dcc.Input(id='ftse_geis', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('FTSE_UK:'),
-            dcc.Input(id='ftse_uk', type='number'),
+            dcc.Input(id='ftse_uk', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('NDX:'),
-            dcc.Input(id='ndx', type='number'),
+            dcc.Input(id='ndx', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('Other Index Events:'),
-            dcc.Input(id='other', type='number'),
+            dcc.Input(id='other', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('Russell:'),
-            dcc.Input(id='russel', type='number'),
+            dcc.Input(id='russel', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('S&P:'),
-            dcc.Input(id='sp', type='number'),
+            dcc.Input(id='sp', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('STOXX:'),
-            dcc.Input(id='stoxx', type='number'),
+            dcc.Input(id='stoxx', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('TSM:'),
-            dcc.Input(id='tsm', type='number'),
+            dcc.Input(id='tsm', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('Value To Trade (m USD):'),
-            dcc.Input(id='vl', type='number'),
+            dcc.Input(id='vl', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('Shares To Trade (m):'),
-            dcc.Input(id='shares', type='number'),
+            dcc.Input(id='shares', type='number', value = 0),
         ]),
 
         html.Div(children=[
             html.Label('Days To Trade:'),
-            dcc.Input(id='days', type='number'),
+            dcc.Input(id='days', type='number', value = 0),
         ]),
 
         html.Div(children=[
@@ -195,7 +195,7 @@ app.layout = html.Div(children=[
 
         html.Div(children=[
             html.Label('Abs Value To Trade (m USD):'),
-            dcc.Input(id='absv', type='number'),
+            dcc.Input(id='absv', type='number', value = 0),
         ]),
 
         html.Div(children=[
