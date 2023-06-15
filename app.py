@@ -195,17 +195,18 @@ app.layout = html.Div(children=[
 )
 def update_output(n_clicks, country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, value, shares, days, bs, absv):
     if n_clicks > 0:
-        # You'll need to fill in default values for the remaining arguments
-        df = make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, value, shares, days, bs, absv)
-        return html.Table(
-            # Header
-            [html.Tr([html.Th(col) for col in df.columns])] +
-
-            # Body
-            [html.Tr([
-                html.Td(df.iloc[i][col]) for col in df.columns
-            ]) for i in range(len(df))]
-        )
-
+        try:
+            df = make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, ftse_uk, ndx, other, russel, sp, stoxx, tsm, value, shares, days, bs, absv)
+            return html.Table(
+                # Header
+                [html.Tr([html.Th(col) for col in df.columns])] +
+                # Body
+                [html.Tr([
+                    html.Td(df.iloc[i][col]) for col in df.columns
+                ]) for i in range(len(df))]
+            )
+        except Exception as e:
+            return html.Div(f'An error occurred: {str(e)}')
+    return None
 if __name__ == '__main__':
     app.run_server(debug=True)
