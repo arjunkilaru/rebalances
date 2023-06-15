@@ -54,7 +54,7 @@ server = app.server
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Rebalance Predictor'),
+    html.H1(children='Rebalance Predictor (it will take ~30secs to make prediction)'),
     html.H2("This program will predict Right/Way wrong way moves for index events, using the last 2 rebalances as reference. Just enter in the details of the rebalance (ticker does not matter), including the number of shares bought or sold (input as negative) on each of the indexes. Put 0 if no trades are occuring on that index. Days to trade means the number of average day volumes being traded.", style={'font-size': '19px', 'font-weight': 'normal'}),
 
     html.Div(children=[
