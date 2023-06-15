@@ -9,8 +9,8 @@ def make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, fts
     start = pd.read_excel('RebalancesAll.xlsx')
     X1 = start.drop(['Unnamed: 0', 'Ticker', 'Date', '30Min Before Close', 'Close', 'Pct Change Into', 'Open Next Day', 'Pct Change Out of', 'Right Way In', 'Right Way Out'], axis=1).loc[:, (start != 0).any(axis=0)]
     X = pd.get_dummies(X1, columns = ['Country Name', 'Currency', 'Buy/Sell'])
-    y_in = start[['Right Way In']]
-    y_out = start[['Right Way Out']]
+    y_in = start['Right Way In']
+    y_out = start['Right Way Out']
 
     best_params = {'n_estimators': 101,
  'learning_rate': 0.011631605344793232,
