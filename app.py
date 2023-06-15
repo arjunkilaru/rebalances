@@ -55,16 +55,50 @@ server = app.server
 
 app.layout = html.Div(children=[
     html.H1(children='Predictor'),
+    html.H2("This program will predict Right/Way wrong way moves for index events, using the last 2 rebalances as reference. Just enter in the details of the rebalance (ticker does not matter), including the number of shares bought or sold (input as negative) on each of the indexes. Put 0 if no trades are occuring on that index. Days to trade means the number of average day volumes being traded.", style={'font-size': '19px', 'font-weight': 'normal'}),
 
     html.Div(children=[
         html.Div(children=[
             html.Label('Country:'),
-            dcc.Input(id='country', type='text'),
+            dcc.Dropdown(
+        id='country',
+        options=[
+            {'label': 'United States', 'value': 'United States'},
+            {'label': 'United Kingdom', 'value': 'United Kingdom'},
+            {'label': 'Germany', 'value': 'Germany'},
+            {'label': 'France', 'value': 'France'},
+            {'label': 'China', 'value': 'China'},
+            {'label': 'Netherlands', 'value': 'Netherlands'},
+            {'label': 'Sweden', 'value': 'Sweden'},
+            {'label': 'Australia', 'value': 'Australia'},
+            {'label': 'Spain', 'value': 'Spain'},
+            {'label': 'India', 'value': 'India'},
+            {'label': 'Korea', 'value': 'Korea'},
+            {'label': 'Israel', 'value': 'Israel'},
+            {'label': 'Hong Kong', 'value': 'Hong Kong'},
+            {'label': 'Ireland', 'value': 'Ireland'},
+        ],
+        value='United States'  # Default value
+        ),      
         ]),
+
 
         html.Div(children=[
             html.Label('Currency:'),
-            dcc.Input(id='currency', type='text'),
+        dcc.Dropdown(
+            id='currency',
+            options=[
+                {'label': 'USD', 'value': 'USD'},
+                {'label': 'GBP', 'value': 'GBP'},
+                {'label': 'EUR', 'value': 'EUR'},
+                {'label': 'HKD', 'value': 'HKD'},
+                {'label': 'SEK', 'value': 'SEK'},
+                {'label': 'AUD', 'value': 'AUD'},
+                {'label': 'INR', 'value': 'INR'},
+                {'label': 'KRW', 'value': 'KRW'},
+            ],
+            value='USD'  # Default value
+        ),
         ]),
 
         html.Div(children=[
@@ -149,7 +183,14 @@ app.layout = html.Div(children=[
 
         html.Div(children=[
             html.Label('Buy/Sell:'),
-            dcc.Input(id='bs', type='text'),
+            dcc.Dropdown(
+                id='bs',
+                options=[
+                    {'label': 'Buy', 'value': 'Buy'},
+                    {'label': 'Sell', 'value': 'Sell'},
+                ],
+                value='Buy'  # Default value
+            ),
         ]),
 
         html.Div(children=[
