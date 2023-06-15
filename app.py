@@ -49,7 +49,7 @@ def make_preds(country, currency, aex, asx, dax, fc50, ftse_epra, ftse_geis, fts
     probs['Confidence Level'] = ls
     return probs
 
-app = dash.Dash(__name__)
+app = Dash(__name__)
 server = app.server
 
 
