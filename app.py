@@ -56,64 +56,118 @@ server = app.server
 app.layout = html.Div(children=[
     html.H1(children='Predictor'),
 
-html.Div(children=[
-        html.Label('Country:'),
-        dcc.Input(id='country', type='text'),
+app.layout = html.Div(children=[
+    html.H1(children='Predictor'),
 
-        html.Label('Currency:'),
-        dcc.Input(id='currency', type='text'),
+    html.Div(children=[
+        html.Div(children=[
+            html.Label('Country:'),
+            dcc.Input(id='country', type='text'),
+        ]),
 
-        html.Label('AEX:'),
-        dcc.Input(id='aex', type='number'),
+        html.Div(children=[
+            html.Label('Currency:'),
+            dcc.Input(id='currency', type='text'),
+        ]),
 
-        html.Label('ASX:'),
-        dcc.Input(id='asx', type='number'),
+        html.Div(children=[
+            html.Label('AEX:'),
+            dcc.Input(id='aex', type='number'),
+        ]),
 
-        html.Label('DAX:'),
-        dcc.Input(id='dax', type='number'),
+        html.Div(children=[
+            html.Label('ASX:'),
+            dcc.Input(id='asx', type='number'),
+        ]),
 
-        html.Label('FC50:'),
-        dcc.Input(id='fc50', type='number'),
+        html.Div(children=[
+            html.Label('DAX:'),
+            dcc.Input(id='dax', type='number'),
+        ]),
 
-        html.Label('FTSE_EPRA:'),
-        dcc.Input(id='ftse_epra', type='number'),
-        
-        html.Label('FTSE_GEIS:'),
-        dcc.Input(id='ftse_geis', type='number'),
-        html.Label('FTSE_UK:'),
-        dcc.Input(id='ftse_uk', type='number'),
-        html.Label('NDX:'),
-        dcc.Input(id='ndx', type='number'),
-        html.Label('Other Index Events:'),
-        dcc.Input(id='other', type='number'),
-        html.Label('Russel:'),
-        dcc.Input(id='russel', type='number'),
-        html.Label('S&P:'),
-        dcc.Input(id='sp', type='number'),
-        html.Label('STOXX:'),
-        dcc.Input(id='stoxx', type='number'),
-        html.Label('TSM:'),
-        dcc.Input(id='tsm', type='number'),
-            
-        html.Label('Value To Trade (m USD):'),
-        dcc.Input(id='vl', type='number'),
-    
-        html.Label('Shares To Trade (m):'),
-        dcc.Input(id='shares', type='number'),
-        html.Label('Days To Trade:'),
-        dcc.Input(id='days', type='number'),
-        html.Label('Buy/Sell:'),
-        dcc.Input(id='bs', type='text'),
+        html.Div(children=[
+            html.Label('FC50:'),
+            dcc.Input(id='fc50', type='number'),
+        ]),
 
-        html.Label('Abs Value To Trade (m USD):'),
-        dcc.Input(id='absv', type='number'),  
-        
-  
-        html.Button('Submit', id='submit-button', n_clicks=0),
+        html.Div(children=[
+            html.Label('FTSE_EPRA:'),
+            dcc.Input(id='ftse_epra', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('FTSE_GEIS:'),
+            dcc.Input(id='ftse_geis', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('FTSE_UK:'),
+            dcc.Input(id='ftse_uk', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('NDX:'),
+            dcc.Input(id='ndx', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Other Index Events:'),
+            dcc.Input(id='other', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Russell:'),
+            dcc.Input(id='russel', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('S&P:'),
+            dcc.Input(id='sp', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('STOXX:'),
+            dcc.Input(id='stoxx', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('TSM:'),
+            dcc.Input(id='tsm', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Value To Trade (m USD):'),
+            dcc.Input(id='vl', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Shares To Trade (m):'),
+            dcc.Input(id='shares', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Days To Trade:'),
+            dcc.Input(id='days', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Buy/Sell:'),
+            dcc.Input(id='bs', type='text'),
+        ]),
+
+        html.Div(children=[
+            html.Label('Abs Value To Trade (m USD):'),
+            dcc.Input(id='absv', type='number'),
+        ]),
+
+        html.Div(children=[
+            html.Button('Submit', id='submit-button', n_clicks=0),
+        ]),
     ]),
 
     html.Div(id='prediction-output'),
 ])
+
 
 @app.callback(
     Output('prediction-output', 'children'),
