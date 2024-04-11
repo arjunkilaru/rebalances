@@ -3,10 +3,11 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
-data = pd.read_excel('all_adr_data.xlsx')
-def get_info(ticker, data, disc, amt, sortby = 'Date'):
+#data = pd.read_excel('all_adr_data.xlsx')
+def get_info(ticker, data, disc, amt):
     ticker = ticker.upper()
     amt = amt/100
+
     ticker += ' EQUITY'
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap']]
     if len(data) == 0:
@@ -24,9 +25,6 @@ def get_info(ticker, data, disc, amt, sortby = 'Date'):
     data['Return'] = round(data['Return'],3)
     data = data.reset_index(drop = True)
     data['Date'] = data['Date'].dt.strftime("%Y-%m-%d")
-    if len(data) < 10:
-        amt = str(round(data['Return'].mean()*10000)) + "bps"
-        acc = str(np.sign(data['Return']).replace(-1,0).mean()*100) + "%"
     zdata = data.dropna().tail(10)
     amt = str(round(zdata['Return'].mean()*10000)) + "bps"
     acc = str(round(np.sign(zdata['Return']).replace(-1,0).mean()*100)) + "%"
@@ -36,8 +34,7 @@ def get_info(ticker, data, disc, amt, sortby = 'Date'):
     data['Prem/Disc (%)'] = round(data['Prem/Disc (%)'],2)
     data['Return (%)']*=100
     data['Return (%)'] = round(data['Return (%)'],2)
-
-    return data.sort_values(by = sortby, ascending = False).dropna(), string
+    return data.sort_values(by = 'Date', ascending = False).dropna(), string
 
 import dash
 from dash import dcc
@@ -46,6 +43,7 @@ import pandas as pd
 import numpy as np
 from dash.dependencies import Input, Output, State
 from dash import dash_table
+from datetime import datetime
 
 def color_scale(value, max_value, min_value, start_color, end_color):
     """
@@ -73,17 +71,34 @@ app.layout = html.Div([
     ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='amt-input', placeholder='Enter % disc/prem (abs value)', type='number', style={'margin': '10px', 'width': '24%'}),
     html.Button('Enter', id='enter-button', n_clicks=0, style={'margin': '10px'}),
+    html.Div([
+        dcc.DatePickerSingle(
+            id='start-date-picker',
+            placeholder='Start Date',
+            style={'margin': '10px', 'width': '100px'},  # Adjusted width
+        ),
+        dcc.DatePickerSingle(
+            id='end-date-picker',
+            placeholder='End Date',
+            date=datetime.today().strftime('%Y-%m-%d'),  # Default to today's date
+            style={'margin': '10px', 'width': '100px'},  # Adjusted width
+        )
+    ]),
+
     html.Div(id='result-table', style={'margin-top': '20px'})  # Placeholder for the styled DataFrame
 ], style={'padding': '30px'})
 
 @app.callback(
     Output('result-table', 'children'),
-    [Input('enter-button', 'n_clicks')],
-    [State('ticker-input', 'value'), State('disc-flag-input', 'value'), State('amt-input', 'value')]
+    Input('enter-button', 'n_clicks'),
+    [State('ticker-input', 'value'), State('disc-flag-input', 'value'), 
+     State('amt-input', 'value'), State('start-date-picker', 'date'), 
+     State('end-date-picker', 'date')]
 )
 
 
-def update_result_table(n_clicks, ticker, flags, amt_threshold):
+
+def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_date):
 
     if n_clicks > 0:
         disc_flag = 'discount' in flags
@@ -95,6 +110,17 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
         max_abs_value = df['Prem/Disc (%)'].abs().max()
         light_blue = [183, 226, 240]  # Darker than the previous light blue
         dark_blue = [65, 105, 225]    # Darker than the previous dark blue
+        if start_date is not None:
+            df = df[df['Date'] >= start_date]
+        if end_date is not None:
+            df = df[df['Date'] <= end_date]
+        zdata = df.dropna().head(10)
+        amt = str(round(zdata['Return (%)'].mean()*100)) + "bps"
+        if disc_flag:
+            acc = str(round(np.sign(zdata['Return (%)']).replace(-1,0).mean()*100)) + "%"
+        else:
+            acc = str(round(np.sign(zdata['Return (%)']).replace(1,0).replace(-1,1).mean()*100)) + "%"
+        result_string = f"Last {len(zdata)} Right Way: {acc}, Last {len(zdata)} Avg Return: {amt}"
 
         # Find the maximum absolute value for the gradient scale.
 
