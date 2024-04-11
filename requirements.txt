@@ -1,5 +1,5 @@
 dash == 2.6.0
-python==3.8
+python == 3.8
 pandas
 openpyxl
 scikit-learn
