@@ -5,6 +5,7 @@ import numpy as np
 
 data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt, sortby = 'Date'):
+    ticker = ticker.upper()
     ticker += ' EQUITY'
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap']]
     if len(data) == 0:
@@ -100,9 +101,9 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
             id='result-data',
             columns=[{'name': col, 'id': col} for col in df.columns],
             data=df.to_dict('records'),
-            style_table={'height': '300px', 'overflowY': 'auto'},
+            style_table={'height': '333px', 'overflowY': 'auto'},
             style_cell={'padding': '5px', 'fontSize': '14px'},
-            page_size=100,  # Adjust based on preference
+            page_size=120,  # Adjust based on preference
                     style_data_conditional=[
                 {
                     'if': {
