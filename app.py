@@ -6,6 +6,7 @@ import numpy as np
 data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt, sortby = 'Date'):
     ticker = ticker.upper()
+    amt = amt/100
     ticker += ' EQUITY'
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap']]
     if len(data) == 0:
@@ -30,11 +31,12 @@ def get_info(ticker, data, disc, amt, sortby = 'Date'):
     amt = str(round(zdata['Return'].mean()*10000)) + "bps"
     acc = str(round(np.sign(zdata['Return']).replace(-1,0).mean()*100)) + "%"
     string = f"Last {len(zdata)} Right Way: {acc}, Last {len(zdata)} Avg Return: {amt}"
-    if sortby == 'Disc/Prem':
-        if disc == True:
-            sortby = 'Prem/Disc'
-        else:
-            sortby = 'Prem/Disc'
+    data.columns = ['Date', 'Prem/Disc (%)', 'Return (%)']
+    data['Prem/Disc (%)'] *=100
+    data['Prem/Disc (%)'] = round(data['Prem/Disc (%)'],2)
+    data['Return (%)']*=100
+    data['Return (%)'] = round(data['Return (%)'],2)
+
     return data.sort_values(by = sortby, ascending = False).dropna(), string
 
 import dash
@@ -69,7 +71,7 @@ app.layout = html.Div([
         {'label': 'Discount', 'value': 'discount'},
         {'label': 'Premium', 'value': 'premium'}
     ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='amt-input', placeholder='Enter amount threshold (absolute value)', type='number', style={'margin': '10px', 'width': '24%'}),
+    dcc.Input(id='amt-input', placeholder='Enter % disc/prem (abs value)', type='number', style={'margin': '10px', 'width': '24%'}),
     html.Button('Enter', id='enter-button', n_clicks=0, style={'margin': '10px'}),
     html.Div(id='result-table', style={'margin-top': '20px'})  # Placeholder for the styled DataFrame
 ], style={'padding': '30px'})
@@ -90,7 +92,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
             return html.P('No data available for the given parameters.')
 
         # Find the maximum absolute value for the gradient scale.
-        max_abs_value = df['Prem/Disc'].abs().max()
+        max_abs_value = df['Prem/Disc (%)'].abs().max()
         light_blue = [183, 226, 240]  # Darker than the previous light blue
         dark_blue = [65, 105, 225]    # Darker than the previous dark blue
 
@@ -101,22 +103,23 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
             id='result-data',
             columns=[{'name': col, 'id': col} for col in df.columns],
             data=df.to_dict('records'),
+            sort_action = "native",
             style_table={'height': '333px', 'overflowY': 'auto'},
             style_cell={'padding': '5px', 'fontSize': '14px'},
             page_size=120,  # Adjust based on preference
                     style_data_conditional=[
                 {
                     'if': {
-                        'filter_query': '{Return} < 0',
-                        'column_id': 'Return'
+                        'filter_query': '{Return (%)} < 0',
+                        'column_id': 'Return (%)'
                     },
                     'backgroundColor': '#FF4136',
                     'color': 'white'
                 },
                 {
                     'if': {
-                        'filter_query': '{Return} > 0',
-                        'column_id': 'Return'
+                        'filter_query': '{Return (%)} > 0',
+                        'column_id': 'Return (%)'
                     },
                     'backgroundColor': '#2ECC40',
                     'color': 'white'
@@ -126,13 +129,13 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
         [
             {
                 'if': {
-                    'filter_query': '{{Prem/Disc}} = {}'.format(value),
-                    'column_id': 'Prem/Disc'
+                    'filter_query': '{{Prem/Disc (%)}} = {}'.format(value),
+                    'column_id': 'Prem/Disc (%)'
                 },
                 'backgroundColor': color_scale(abs(value), max_abs_value, 0, light_blue, dark_blue),
                 'color': 'white' if abs(value) > max_abs_value * 0.5 else 'black'
             }
-            for value in df['Prem/Disc'].unique() if not pd.isnull(value)
+            for value in df['Prem/Disc (%)'].unique() if not pd.isnull(value)
         ]
 
         )
