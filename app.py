@@ -3,27 +3,32 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
-data = pd.read_excel('all_adr_data.xlsx')
+#data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt):
     ticker = ticker.upper()
     amt = amt/100
 
     ticker += ' EQUITY'
-    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap']]
+    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna()
     if len(data) == 0:
         return data, ('Error: Invalid Ticker')
+    if len(data) == 0:
+        return data, ('Error: Invalid Premium/Discount')
     if disc:
         data = data[data['premium'] <= -amt]
-        data.columns =  ['Date', 'Prem/Disc', 'Return']
+        data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     else:
         data = data[data['premium'] >= amt]
-        data.columns =  ['Date', 'Prem/Disc', 'Return']
+        data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
-    if len(data) == 0:
-        return data, ('Error: Invalid Premium/Discount')
-    data['Return'] = round(data['Return'],3)
+    int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
+
+    data['Right Way Return'] = np.where(data['Absolute Return'] < 0, data['Absolute Return'], int_list * data['Absolute Return'])
     data = data.reset_index(drop = True)
+    del data['Absolute Return']
+    data['Return'] = data['Right Way Return']
+    del data['Right Way Return']
     data['Date'] = data['Date'].dt.strftime("%Y-%m-%d")
     zdata = data.dropna().tail(10)
     amt = str(round(zdata['Return'].mean()*10000)) + "bps"
@@ -121,7 +126,10 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         else:
             acc = str(round(np.sign(zdata['Return (%)']).replace(1,0).replace(-1,1).mean()*100)) + "%"
         result_string = f"Last {len(zdata)} Right Way: {acc}, Last {len(zdata)} Avg Return: {amt}"
-
+        data_filtered = data[data['adr'] == ticker.upper() + " EQUITY"].sort_values('date')
+        last_date = data_filtered.iloc[0]['date']
+        formatted_date = last_date.strftime('%m/%Y')
+        result_string += f". Coverage for this ticker beginning {formatted_date}."
         # Find the maximum absolute value for the gradient scale.
 
         # Create a DataTable component to display the dataframe with conditional styling
