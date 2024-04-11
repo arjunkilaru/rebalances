@@ -47,7 +47,7 @@ from dash.dependencies import Input, Output, State
 from dash import dash_table
 
 app = dash.Dash(__name__)
-server - app.server
+server = app.server
 
 # Create input components
 app.layout = html.Div([
