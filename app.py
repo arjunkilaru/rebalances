@@ -125,7 +125,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
         [
                 {
                     'if': {
-                        'filter_query': f'{{{'Prem/Disc'}}} = {value}',
+                        'filter_query': f'{{{{Prem/Disc}}}} = {value}',
                         'column_id': 'Prem/Disc'
                     },
                     'backgroundColor': color_scale(abs(value), max_abs_value, 0, light_blue, dark_blue),
