@@ -3,7 +3,7 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
-#data = pd.read_excel('all_adr_data.xlsx')
+data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt):
     ticker = ticker.upper()
     amt = amt/100
