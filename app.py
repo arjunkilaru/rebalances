@@ -123,16 +123,17 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold):
             ] 
  + 
         [
-                {
-                    'if': {
-                    'filter_query': '{{"Prem/Disc"}} = {}'.format(value),
-                        'column_id': 'Prem/Disc'
-                    },
-                    'backgroundColor': color_scale(abs(value), max_abs_value, 0, light_blue, dark_blue),
-                    'color': 'white'
-                }
-                for value in df['Prem/Disc'].unique()
-            ]
+            {
+                'if': {
+                    'filter_query': '{{Prem/Disc}} = {}'.format(value),
+                    'column_id': 'Prem/Disc'
+                },
+                'backgroundColor': color_scale(abs(value), max_abs_value, 0, light_blue, dark_blue),
+                'color': 'white' if abs(value) > max_abs_value * 0.5 else 'black'
+            }
+            for value in df['Prem/Disc'].unique() if not pd.isnull(value)
+        ]
+
         )
     
         return [html.P(result_string, style={'margin-bottom': '10px'}), table]
