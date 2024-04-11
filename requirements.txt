@@ -1,4 +1,4 @@
-dash == 2.16.1
+dash == 2.6.0
 python==3.8
 pandas
 openpyxl
