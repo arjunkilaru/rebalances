@@ -3,8 +3,8 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 
+data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt, sortby = 'Date'):
-    data = pd.read_excel('all_adr_data.xlsx')
     ticker += ' EQUITY'
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap']]
     if len(data) == 0:
