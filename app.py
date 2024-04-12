@@ -121,10 +121,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
             df = df[df['Date'] <= end_date]
         zdata = df.dropna().head(10)
         amt = str(round(zdata['Return (%)'].mean()*100)) + "bps"
-        if disc_flag:
-            acc = str(round(np.sign(zdata['Return (%)']).replace(-1,0).mean()*100)) + "%"
-        else:
-            acc = str(round(np.sign(zdata['Return (%)']).replace(1,0).replace(-1,1).mean()*100)) + "%"
+        acc = str(round(np.sign(zdata['Return (%)']).replace(-1,0).mean()*100)) + "%"
         result_string = f"Last {len(zdata)} Right Way: {acc}, Last {len(zdata)} Avg Return: {amt}"
         data_filtered = data[data['adr'] == ticker.upper() + " EQUITY"].sort_values('date')
         last_date = data_filtered.iloc[0]['date']
