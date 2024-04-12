@@ -26,21 +26,21 @@ def get_info(ticker, data, disc, amt):
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
-
+    data['Trade'] = np.where((data['Absolute Return'] > 0) & (data['Return'] > 0), 'Long',
+                             np.where((data['Absolute Return'] > 0) & (data['Return'] < 0), 'Short', 'Zero'))
     data['Right Way Return'] = np.where(data['Absolute Return'] < 0, data['Absolute Return'], int_list * data['Absolute Return'])
     data = data.reset_index(drop = True)
     del data['Absolute Return']
     data['Return'] = data['Right Way Return']
     del data['Right Way Return']
     data['Date'] = data['Date'].dt.strftime("%Y-%m-%d")
-    zdata = data.dropna().tail(10)
-    data.columns = ['Date', 'Prem/Disc (%)', 'Return (%)']
+    data.columns = ['Date', 'Prem/Disc (%)', 'Return (%)', 'Trade']
+
     data['Prem/Disc (%)'] *=100
     data['Prem/Disc (%)'] = round(data['Prem/Disc (%)'],2)
     data['Return (%)']*=100
     data['Return (%)'] = round(data['Return (%)'],2)
     return data.sort_values(by = 'Date', ascending = False).dropna()
-
 def show_all(ticker, data, disc, amt):
     if amt != 0:
         return get_info(ticker, data, disc, amt)
