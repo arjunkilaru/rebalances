@@ -12,14 +12,16 @@ def get_info(ticker, data, disc, amt):
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna()
     if len(data) == 0:
         return data, ('Error: Invalid Ticker')
-    if len(data) == 0:
-        return data, ('Error: Invalid Premium/Discount')
     if disc:
         data = data[data['premium'] <= -amt]
+        if len(data) == 0:
+            return data, ('Error: Invalid Premium/Discount')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     else:
         data = data[data['premium'] >= amt]
+        if len(data) == 0:
+            return data, ('Error: Invalid Premium/Discount')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
