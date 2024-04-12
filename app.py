@@ -5,6 +5,7 @@ import numpy as np
 
 data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt):
+
     ticker = ticker.upper()
     amt = amt/100
 
@@ -15,13 +16,13 @@ def get_info(ticker, data, disc, amt):
     if disc:
         data = data[data['premium'] <= -amt]
         if len(data) == 0:
-            return data, ('Error: Invalid Premium/Discount')
+            return data, ('Error: Invalid Ticker')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     else:
         data = data[data['premium'] >= amt]
         if len(data) == 0:
-            return data, ('Error: Invalid Premium/Discount')
+            return data, ('Error: Invalid Ticker')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
@@ -33,15 +34,27 @@ def get_info(ticker, data, disc, amt):
     del data['Right Way Return']
     data['Date'] = data['Date'].dt.strftime("%Y-%m-%d")
     zdata = data.dropna().tail(10)
-    amt = str(round(zdata['Return'].mean()*10000)) + "bps"
-    acc = str(round(np.sign(zdata['Return']).replace(-1,0).mean()*100)) + "%"
-    string = f"Last {len(zdata)} Right Way: {acc}, Last {len(zdata)} Avg Return: {amt}"
     data.columns = ['Date', 'Prem/Disc (%)', 'Return (%)']
     data['Prem/Disc (%)'] *=100
     data['Prem/Disc (%)'] = round(data['Prem/Disc (%)'],2)
     data['Return (%)']*=100
     data['Return (%)'] = round(data['Return (%)'],2)
-    return data.sort_values(by = 'Date', ascending = False).dropna(), string
+    return data.sort_values(by = 'Date', ascending = False).dropna()
+
+def show_all(ticker, data, disc, amt):
+    if amt != 0:
+        return get_info(ticker, data, disc, amt)
+    else:
+        disc1 = get_info(ticker, data, True, 0)
+        prem1 = get_info(ticker, data, False, 0)
+        df = pd.concat([disc1, prem1]).reset_index(drop = True)
+        df['Date'] = pd.to_datetime(df['Date'])
+        df = df.sort_values(by = 'Date', ascending = False).dropna()
+        df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
+        return df 
+
+
+
 
 import dash
 from dash import dcc
@@ -76,7 +89,7 @@ app.layout = html.Div([
         {'label': 'Discount', 'value': 'discount'},
         {'label': 'Premium', 'value': 'premium'}
     ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='amt-input', placeholder='Enter % disc/prem (abs value)', type='number', style={'margin': '10px', 'width': '24%'}),
+    dcc.Input(id='amt-input', placeholder='% Disc/Prem (abs value). (0 for no filter)', type='number', style={'margin': '10px', 'width': '27.6%'}),
     html.Button('Enter', id='enter-button', n_clicks=0, style={'margin': '10px'}),
     html.Div([
         dcc.DatePickerSingle(
@@ -109,7 +122,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
 
     if n_clicks > 0:
         disc_flag = 'discount' in flags
-        df, result_string = get_info(ticker, data, disc_flag, amt_threshold)
+        df = show_all(ticker, data, disc_flag, amt_threshold)
         if df.empty:
             return html.P('No data available for the given parameters.')
 
