@@ -12,17 +12,17 @@ def get_info(ticker, data, disc, amt):
     ticker += ' EQUITY'
     data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna()
     if len(data) == 0:
-        return data, ('Error: Invalid Ticker')
+        return pd.DataFrame()
     if disc:
         data = data[data['premium'] <= -amt]
         if len(data) == 0:
-            return data, ('Error: Invalid Ticker')
+            return pd.DataFrame()
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     else:
         data = data[data['premium'] >= amt]
         if len(data) == 0:
-            return data, ('Error: Invalid Ticker')
+            return pd.DataFrame(), ('Error: Invalid Ticker')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
