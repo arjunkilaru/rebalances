@@ -10,7 +10,7 @@ def get_info(ticker, data, disc, amt):
     amt = amt/100
 
     ticker += ' EQUITY'
-    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna()
+    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna().drop_duplicates(subset = 'date').drop_duplicates()
     if len(data) == 0:
         return pd.DataFrame()
     if disc:
