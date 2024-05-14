@@ -116,8 +116,54 @@ def get_everything(ticker, amount):
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     return df
+def get_everything2(ticker, amount):
+    td = pd.to_datetime('today')
+    start = td - timedelta(days = 365*5)
+    try:
+        df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
+    except:
+        return pd.DataFrame()
+    df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
+    if amount > 0:
+        df = df[df['Prev Close to Close'] >= amount]
+    elif amount < 0:
+        df = df[df['Prev Close to Close'] <= amount]
+    else:
+        df = df.tail(15)
+    def get_df(row):
+        date_obj = Timestamp(row.name)
+        eastern = timezone('US/Eastern')
+        if date_obj.tzinfo is None:
+            date_obj = eastern.localize(date_obj)
+        else:
+            date_obj = date_obj.tz_convert(eastern)
+        dst_start = datetime(date_obj.year, 3, 8) + timedelta(days=6 - datetime(date_obj.year, 3, 8).weekday())
+        dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
+        dst_start = eastern.localize(dst_start)
+        dst_end = eastern.localize(dst_end)
+        date_obj += BDay(2)
+        start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
+        end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
+        return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
 
+    def get_rets(nowdf, min):
+        if len(nowdf) == 0:
+            return np.nan
+        open = float(nowdf['open'][0])
+        return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
 
+    all_dfs = [get_df(row) for index, row in df.iterrows()]
+
+    # Calculate returns for each dataframe and store them in new columns in df
+    df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
+    df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
+    df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
+    df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
+    df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
+    df = df[['Prev Close to Close', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
+    df.index = df.index.strftime("%Y-%m-%d")
+    df = df.iloc[::-1].reset_index()
+    return df.dropna()
 
 import dash
 from dash import dcc
@@ -168,16 +214,23 @@ app.layout = html.Div([
             style={'margin': '10px', 'width': '100px'},  # Adjusted width
         )
     ]),
-
     html.Div(id='result-table', style={'margin-top': '20px'}),
     html.Hr(),
-    html.H2("Off Open Return"),
+    html.H2("Off Open Return - Close to Open Gap Up"),
     html.P("Visualize returns off the open from when a stock gaps up (close->open return) a certain amount:"),
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
     html.Div(id='output-table', style={'margin-top': '20px'}),
-])
+
+    html.Hr(),
+    html.H2("Off Open Return - Previous Close-Close Move"),
+    html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
+    dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
+    dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
+    dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
+    html.Div(id='doutput-table', style={'margin-top': '20px'}),
+],)
 
 
 @app.callback(
@@ -291,12 +344,11 @@ def update_output(n_clicks, ticker, amount):
                     'if': {'filter_query': strin + ' < 0', 'column_id': column},
                     'backgroundColor': '#FF6666 ', 'color':'white'
                 })
-            print(style_data_conditionals)
             return dash_table.DataTable(
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in df.columns],
                 style_table={'overflowX': 'auto'},
-                page_size=10,
+                page_size=25,
                 style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
                 style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                 style_data_conditional=style_data_conditionals  # Apply color coding
@@ -305,5 +357,46 @@ def update_output(n_clicks, ticker, amount):
             return html.Div(f"Error fetching data: {str(e)}")
     return html.Div("Submit a ticker and amount to see data.")
 
+@app.callback(
+Output('doutput-table', 'children'),
+[Input('submit-buttons', 'n_clicks')],
+[dash.dependencies.State('input-tickers', 'value'),
+    dash.dependencies.State('input-amounts', 'value')]
+)
+def update_output(n_clicks, ticker, amount):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            amount = float(amount)
+            df = get_everything2(ticker, amount)            
+            # Color coding for values in each column
+            style_data_conditionals = []
+            for column in df.columns:
+                if column == 'date':
+                    continue
+                # Convert column values to numeric
+                df[column] = pd.to_numeric(df[column], errors='coerce')
+            style_data_conditionals = []
+            for column in df.columns:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22 ', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666 ', 'color':'white'
+                })
+            return dash_table.DataTable(
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in df.columns],
+                style_table={'overflowX': 'auto'},
+                page_size=25,
+                style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_data_conditional=style_data_conditionals  # Apply color coding
+            )
+        except Exception as e:
+            return html.Div(f"Error fetching data: {str(e)}")
+    return html.Div("Submit a ticker and amount to see data.")
 if __name__ == '__main__':
     app.run_server(debug=True, port = 8051)
