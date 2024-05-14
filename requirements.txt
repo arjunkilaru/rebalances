@@ -8,3 +8,4 @@ numpy
 pytz
 alpaca_trade_api
 tiingo
+dash-bootstrap-components
