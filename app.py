@@ -5,9 +5,6 @@ import numpy as np
 from pandas.tseries.offsets import BDay
 from datetime import datetime, timedelta
 import alpaca_trade_api as tradeapi
-import warnings 
-
-warnings.filterwarnings("ignore")
 api_key = 'PKAHFOAA86UB7M7PQB62'
 api_secret = 'dEPAZPtNU3yBKiYXcihnhys2Tg6mIkwEm67tEgOV'
 base_url = 'https://paper-api.alpaca.markets'
