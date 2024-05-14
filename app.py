@@ -78,7 +78,7 @@ def get_everything(ticker, amount):
     elif amount < 0:
         df = df[df['Close to Open'] <= amount]
     else:
-        return pd.DataFrame()
+        return df.tail(15)
 
     def get_df(row):
         date_obj = Timestamp(row.name)
