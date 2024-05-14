@@ -2,6 +2,22 @@ from dash import dcc, html, Dash, Input, Output, dash_table
 from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
+from pandas.tseries.offsets import BDay
+from datetime import datetime, timedelta
+import alpaca_trade_api as tradeapi
+import warnings 
+
+warnings.filterwarnings("ignore")
+api_key = 'PKAHFOAA86UB7M7PQB62'
+api_secret = 'dEPAZPtNU3yBKiYXcihnhys2Tg6mIkwEm67tEgOV'
+base_url = 'https://paper-api.alpaca.markets'
+api = tradeapi.REST(api_key, api_secret, base_url, api_version='v2')
+import tiingo
+from tiingo import TiingoClient
+config = {}
+config['session'] = True
+config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
+client = TiingoClient(config)
 
 data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt):
@@ -10,19 +26,19 @@ def get_info(ticker, data, disc, amt):
     amt = amt/100
 
     ticker += ' EQUITY'
-    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna().drop_duplicates(subset = 'date').drop_duplicates()
+    data = data[data['adr'] == ticker][['date', 'premium', 'close_to_twap', 'absolute return']].dropna()
     if len(data) == 0:
-        return pd.DataFrame()
+        return data, ('Error: Invalid Ticker')
     if disc:
         data = data[data['premium'] <= -amt]
         if len(data) == 0:
-            return pd.DataFrame()
+            return data, ('Error: Invalid Ticker')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     else:
         data = data[data['premium'] >= amt]
         if len(data) == 0:
-            return pd.DataFrame(), ('Error: Invalid Ticker')
+            return data, ('Error: Invalid Ticker')
         data.columns =  ['Date', 'Prem/Disc', 'Return', 'Absolute Return']
         data['Prem/Disc'] = round(data['Prem/Disc'], 3)
     int_list = np.where(np.sign(data['Return']) != np.sign(data['Prem/Disc']), 1, -1)
@@ -52,18 +68,68 @@ def show_all(ticker, data, disc, amt):
         df = df.sort_values(by = 'Date', ascending = False).dropna()
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
+def get_everything(ticker, amount):
+    td = pd.to_datetime('today')
+    start = td - timedelta(days = 365*5)
+    try:
+        df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
+    except:
+        return pd.DataFrame()
+    df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
+    if amount > 0:
+        df = df[df['Close to Open'] >= amount]
+    elif amount < 0:
+        df = df[df['Close to Open'] <= amount]
+    else:
+        return pd.DataFrame()
 
+    def get_df(row):
+        date_obj = Timestamp(row.name)
+        eastern = timezone('US/Eastern')
+        if date_obj.tzinfo is None:
+            date_obj = eastern.localize(date_obj)
+        else:
+            date_obj = date_obj.tz_convert(eastern)
+        dst_start = datetime(date_obj.year, 3, 8) + timedelta(days=6 - datetime(date_obj.year, 3, 8).weekday())
+        dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
+        dst_start = eastern.localize(dst_start)
+        dst_end = eastern.localize(dst_end)
+        if dst_start <= date_obj < dst_end:
+            time_offset = "-04:00"
+        else:
+            time_offset = "-05:00"
+        date_obj += BDay(1)
+        start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
+        end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
+        return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
+
+    def get_rets(nowdf, min):
+        open = float(nowdf['open'][0])
+        return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
+
+    all_dfs = [get_df(row) for index, row in df.iterrows()]
+
+    # Calculate returns for each dataframe and store them in new columns in df
+    df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
+    df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
+    df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
+    df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
+    df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
+    df = df[[ 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
+    df.index = df.index.strftime("%Y-%m-%d")
+    df = df.iloc[::-1].reset_index()
+    return df
 
 
 
 import dash
 from dash import dcc
+import dash_bootstrap_components as dbc
 from dash import html
-import pandas as pd
-import numpy as np
-from dash.dependencies import Input, Output, State
 from dash import dash_table
-from datetime import datetime
+import dash_bootstrap_components as dbc
+from pandas import Timestamp
+from pytz import timezone
 
 def color_scale(value, max_value, min_value, start_color, end_color):
     """
@@ -78,12 +144,13 @@ def color_scale(value, max_value, min_value, start_color, end_color):
 # Define your color range for the gradient here.
 
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
 # Create input components
 app.layout = html.Div([
-    html.H1("ADR Info Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
+    html.H1("Arjun Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
+    html.H2("ADR Lookback"),
     dcc.Input(id='ticker-input', placeholder='Enter ADR symbol (i.e. BABA)', type='text', style={'margin': '10px', 'width': '20%'}),
     dcc.Dropdown(id='disc-flag-input', options=[
         {'label': 'Discount', 'value': 'discount'},
@@ -105,8 +172,16 @@ app.layout = html.Div([
         )
     ]),
 
-    html.Div(id='result-table', style={'margin-top': '20px'})  # Placeholder for the styled DataFrame
-], style={'padding': '30px'})
+    html.Div(id='result-table', style={'margin-top': '20px'}),
+    html.Hr(),
+    html.H2("Additional Stock Data: Close to Open Gaps"),
+    html.P("Enter a stock ticker and an amount to fetch the data:"),
+    dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
+    dbc.Input(id='input-amount', type='number', placeholder='Enter amount, e.g., 10'),
+    dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
+    html.Div(id='output-table', style={'margin-top': '20px'}),
+])
+
 
 @app.callback(
     Output('result-table', 'children'),
@@ -189,6 +264,29 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         return [html.P(result_string, style={'margin-bottom': '10px'}), table]
     else:
         return None
+    
+@app.callback(
+Output('output-table', 'children'),
+[Input('submit-button', 'n_clicks')],
+[dash.dependencies.State('input-ticker', 'value'),
+    dash.dependencies.State('input-amount', 'value')]
+)
+def update_output(n_clicks, ticker, amount):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            amount = float(amount)
+            df = get_everything(ticker, amount)
+            return dash_table.DataTable(
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in df.columns],
+                style_table={'overflowX': 'auto'},
+                page_size=10,
+                style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+            )
+        except Exception as e:
+            return html.Div(f"Error fetching data: {str(e)}")
+    return html.Div("Submit a ticker and amount to see data.")
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port = 8051)
