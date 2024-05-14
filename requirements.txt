@@ -7,5 +7,4 @@ datetime
 numpy
 pytz
 alpaca_trade_api
-warnings
 tiingo
