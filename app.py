@@ -171,10 +171,10 @@ app.layout = html.Div([
 
     html.Div(id='result-table', style={'margin-top': '20px'}),
     html.Hr(),
-    html.H2("Additional Stock Data: Close to Open Gaps"),
-    html.P("Enter a stock ticker and an amount to fetch the data:"),
+    html.H2("Off Open Return"),
+    html.P("Visualize returns off the open from when a stock gaps up (close->open return) a certain amount:"),
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
-    dbc.Input(id='input-amount', type='number', placeholder='Enter amount, e.g., 10'),
+    dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
     html.Div(id='output-table', style={'margin-top': '20px'}),
 ])
@@ -272,14 +272,34 @@ def update_output(n_clicks, ticker, amount):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount)
+            df = get_everything(ticker, amount)            
+            # Color coding for values in each column
+            style_data_conditionals = []
+            for column in df.columns:
+                if column == 'date':
+                    continue
+                # Convert column values to numeric
+                df[column] = pd.to_numeric(df[column], errors='coerce')
+            style_data_conditionals = []
+            for column in df.columns:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22 ', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666 ', 'color':'white'
+                })
+            print(style_data_conditionals)
             return dash_table.DataTable(
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in df.columns],
                 style_table={'overflowX': 'auto'},
                 page_size=10,
                 style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
-                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_data_conditional=style_data_conditionals  # Apply color coding
             )
         except Exception as e:
             return html.Div(f"Error fetching data: {str(e)}")
