@@ -201,7 +201,6 @@ app.layout = html.Div([
         {'label': 'Premium', 'value': 'premium'}
     ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='amt-input', placeholder='% Disc/Prem (abs value). (0 for no filter)', type='number', style={'margin': '10px', 'width': '27.6%'}),
-    dbc.Button('Sumbit', id='enter-button', color = 'primary', n_clicks=0),
     html.Div([
         dcc.DatePickerSingle(
             id='start-date-picker',
@@ -215,6 +214,7 @@ app.layout = html.Div([
             style={'margin': '10px', 'width': '100px'},  # Adjusted width
         )
     ]),
+    dbc.Button('Submit', id='enter-button', color = 'primary', n_clicks=0),
     html.Div(id='result-table', style={'margin-top': '20px'}),
     html.Hr(),
     html.H2("Off Open Return - Close to Open Gap Up"),
