@@ -194,13 +194,14 @@ server = app.server
 app.layout = html.Div([
     html.H1("Arjun Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
     html.H2("ADR Lookback"),
+    html.P("Visualize returns of ADR->ORD conversion trades for specific pairs and premium/discount levels"), 
     dcc.Input(id='ticker-input', placeholder='Enter ADR symbol (i.e. BABA)', type='text', style={'margin': '10px', 'width': '20%'}),
     dcc.Dropdown(id='disc-flag-input', options=[
         {'label': 'Discount', 'value': 'discount'},
         {'label': 'Premium', 'value': 'premium'}
     ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='amt-input', placeholder='% Disc/Prem (abs value). (0 for no filter)', type='number', style={'margin': '10px', 'width': '27.6%'}),
-    html.Button('Enter', id='enter-button', n_clicks=0, style={'margin': '10px'}),
+    html.Button('Sumbit', id='enter-button', color = 'primary', n_clicks=0, style={'margin': '10px'}),
     html.Div([
         dcc.DatePickerSingle(
             id='start-date-picker',
