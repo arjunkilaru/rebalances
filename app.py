@@ -195,7 +195,7 @@ app.layout = html.Div([
     html.H1("Arjun Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
     html.H2("ADR Lookback"),
     html.P("Visualize returns of ADR->ORD conversion trades for specific pairs and premium/discount levels"), 
-    html.P("Prem/Disc is taken from snapshot around 3pm. Return is of 2hr twap in ORD Country out of right way position.")
+    html.P("Prem/Disc is taken from snapshot around 3pm. Return is of 2hr twap in ORD Country out of right way position."),
     dcc.Input(id='ticker-input', placeholder='Enter ADR symbol (i.e. BABA)', type='text', style={'margin': '10px', 'width': '20%'}),
     dcc.Dropdown(id='disc-flag-input', options=[
         {'label': 'Discount', 'value': 'discount'},
