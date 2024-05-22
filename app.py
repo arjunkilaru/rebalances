@@ -124,6 +124,7 @@ def get_everything2(ticker, amount):
     except:
         return pd.DataFrame()
     df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
+    df['Close to Open'] = round(100*(df['adjOpen'].shift(-1) - df['adjClose'])/df['adjClose'],3)
     if amount > 0:
         df = df[df['Prev Close to Close'] >= amount]
     elif amount < 0:
@@ -131,20 +132,23 @@ def get_everything2(ticker, amount):
     else:
         df = df.tail(15)
     def get_df(row):
-        date_obj = Timestamp(row.name)
-        eastern = timezone('US/Eastern')
-        if date_obj.tzinfo is None:
-            date_obj = eastern.localize(date_obj)
-        else:
-            date_obj = date_obj.tz_convert(eastern)
-        dst_start = datetime(date_obj.year, 3, 8) + timedelta(days=6 - datetime(date_obj.year, 3, 8).weekday())
-        dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
-        dst_start = eastern.localize(dst_start)
-        dst_end = eastern.localize(dst_end)
-        date_obj += BDay(2)
-        start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
-        end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-        return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
+        try:
+            date_obj = Timestamp(row.name)
+            eastern = timezone('US/Eastern')
+            if date_obj.tzinfo is None:
+                date_obj = eastern.localize(date_obj)
+            else:
+                date_obj = date_obj.tz_convert(eastern)
+            dst_start = datetime(date_obj.year, 3, 8) + timedelta(days=6 - datetime(date_obj.year, 3, 8).weekday())
+            dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
+            dst_start = eastern.localize(dst_start)
+            dst_end = eastern.localize(dst_end)
+            date_obj += BDay(2)
+            start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
+            end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
+            return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
+        except:
+            return pd.DataFrame()
 
     def get_rets(nowdf, min):
         if len(nowdf) == 0:
@@ -160,7 +164,7 @@ def get_everything2(ticker, amount):
     df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
     df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-    df = df[['Prev Close to Close', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
+    df = df[['Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     return df.dropna()
@@ -173,7 +177,8 @@ from dash import dash_table
 import dash_bootstrap_components as dbc
 from pandas import Timestamp
 from pytz import timezone
-
+import warnings
+warnings.filterwarnings('ignore')
 def color_scale(value, max_value, min_value, start_color, end_color):
     """
     Returns a color from a gradient scale based on the value's position between min_value and max_value.
