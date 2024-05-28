@@ -67,7 +67,7 @@ def show_all(ticker, data, disc, amt):
         return df 
 def get_everything(ticker, amount):
     td = pd.to_datetime('today')
-    start = td - timedelta(days = 365*5)
+    start = td - timedelta(days = 365*10)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
@@ -118,7 +118,7 @@ def get_everything(ticker, amount):
     return df
 def get_everything2(ticker, amount):
     td = pd.to_datetime('today')
-    start = td - timedelta(days = 365*5)
+    start = td - timedelta(days = 365*10)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
