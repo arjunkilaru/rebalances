@@ -67,7 +67,7 @@ def show_all(ticker, data, disc, amt):
         return df 
 def get_everything(ticker, amount):
     td = pd.to_datetime('today')
-    start = td - timedelta(days = 365*8)
+    start = td - timedelta(days = 365*5)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
@@ -116,9 +116,9 @@ def get_everything(ticker, amount):
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     return df
-def get_everything2(ticker, amount):
+def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     td = pd.to_datetime('today')
-    start = td - timedelta(days = 365*8)
+    start = td - timedelta(days = 365*10)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
@@ -167,6 +167,9 @@ def get_everything2(ticker, amount):
     df = df[['Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
+    df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
+    if weekday != 'No Weekday Filter':
+        df = df[df['Weekday'] == weekday]
     return df.dropna()
 
 import dash
@@ -235,6 +238,14 @@ app.layout = html.Div([
     html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
     dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
     dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
+    dcc.Dropdown(id='weekday-filter-dropdown', options=[
+    {'label': 'No Weekday Filter', 'value': 'No Weekday Filter'},
+    {'label': 'Monday', 'value': 'Monday'},
+    {'label': 'Tuesday', 'value': 'Tuesday'},
+    {'label': 'Wednesday', 'value': 'Wednesday'},
+    {'label': 'Thursday', 'value': 'Thursday'},
+    {'label': 'Friday', 'value': 'Friday'},
+        ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
     dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
 ],)
@@ -365,20 +376,23 @@ def update_output(n_clicks, ticker, amount):
     return html.Div("Submit a ticker and amount to see data.")
 
 @app.callback(
-Output('doutput-table', 'children'),
-[Input('submit-buttons', 'n_clicks')],
-[dash.dependencies.State('input-tickers', 'value'),
-    dash.dependencies.State('input-amounts', 'value')]
+    Output('doutput-table', 'children'),
+    [Input('submit-buttons', 'n_clicks')],
+    [State('input-tickers', 'value'),
+     State('input-amounts', 'value'),
+     State('weekday-filter-dropdown', 'value')]
 )
-def update_output(n_clicks, ticker, amount):
+def update_output(n_clicks, ticker, amount, weekday_filter):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything2(ticker, amount)            
+            df = get_everything2(ticker, amount, weekday_filter)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
                 if column == 'date':
+                    continue
+                if column == 'Weekday':
                     continue
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
