@@ -16,6 +16,11 @@ config['session'] = True
 config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
 
+api_key2 = 'PKXY2KAIRXBONPE3U5HA'
+api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
+base_url = 'https://paper-api.alpaca.markets'
+api2 = tradeapi.REST(api_key2, api_secret2, base_url, api_version='v2')
+
 data = pd.read_excel('all_adr_data.xlsx')
 def get_info(ticker, data, disc, amt):
 
@@ -98,7 +103,11 @@ def get_everything(ticker, amount):
         date_obj += BDay(1)
         start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
         end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-        return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
+        if np.random.choice([1,2]) ==1:
+            zapi = api
+        else:
+            zapi = api2
+        return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, min):
         open = float(nowdf['open'][0])
@@ -146,7 +155,11 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
             date_obj += BDay(2)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-            return api.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
+            if np.random.choice([1,2]) ==1:
+                zapi = api
+            else:
+                zapi = api2
+            return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df           
         except:
             return pd.DataFrame()
 
@@ -234,7 +247,7 @@ app.layout = html.Div([
     html.Div(id='output-table', style={'margin-top': '20px'}),
 
     html.Hr(),
-    html.H2("Overnight & Off Open Return - Previous Close-Close Move"),
+    html.H2("Off Open Return - Previous Close-Close Move"),
     html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
     dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
     dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
