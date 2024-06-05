@@ -83,7 +83,7 @@ def get_everything(ticker, amount):
     elif amount < 0:
         df = df[df['Close to Open'] <= amount]
     else:
-        df = df.tail(15)
+        df = df.tail(30)
 
     def get_df(row):
         date_obj = Timestamp(row.name)
@@ -139,7 +139,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     elif amount < 0:
         df = df[df['Prev Close to Close'] <= amount]
     else:
-        df = df.tail(15)
+        df = df.tail(30)
     def get_df(row):
         try:
             date_obj = Timestamp(row.name)
