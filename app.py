@@ -126,13 +126,28 @@ def get_everything(ticker, amount):
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     return df
-def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
+def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = False,  ath = False):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*10)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
         return pd.DataFrame()
+    highs = []
+    at = []
+    blp = df.copy().reset_index()
+    for i in range(0,len(blp)):
+        dfi = blp.head(i)
+        num = dfi[dfi['adjClose'] > blp['adjClose'][i]]
+        if len(num) == 0:
+            highs.append(i - 1)
+            at.append(True)
+        else:
+            highs.append(i - num.index.tolist()[-1] - 1)
+            at.append(False)
+    df['# Day High'] = highs
+    df['All Time High'] = at
+
     df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
     df['Close to Open'] = round(100*(df['adjOpen'].shift(-1) - df['adjClose'])/df['adjClose'],3)
     if amount > 0:
@@ -140,7 +155,12 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     elif amount < 0:
         df = df[df['Prev Close to Close'] <= amount]
     else:
-        df = df.tail(15)
+        df = df.tail(30)
+    if dailyhigh > 0:
+        df = df[df['# Day High'] >= dailyhigh]
+    if ath:
+            df = df[df['All Time High'] == True]
+
     def get_df(row):
         try:
             date_obj = Timestamp(row['date'])
@@ -171,16 +191,20 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
     if weekday != 'No Weekday Filter':
         df = df[df['Weekday'] == weekday]
-    all_dfs = [get_df(row) for index, row in df.iterrows()]
-    # Calculate returns for each dataframe and store them in new columns in df
-    df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
-    df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
-    df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
-    df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
-    df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-    df = df[['Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
-    df = df.iloc[::-1]
-    return df.dropna().reset_index(drop = True)
+    if offopen:
+        all_dfs = [get_df(row) for index, row in df.iterrows()]
+        # Calculate returns for each dataframe and store them in new columns in df
+        df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
+        df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
+        df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
+        df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
+        df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
+        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', '# Day High', 'All Time High', 'Weekday']]
+        df = df.iloc[::-1]
+        return df.dropna().reset_index(drop = True)
+
+    else:
+        return df[['date', 'Prev Close to Close', 'Close to Open', '# Day High', 'All Time High', 'Weekday']]
 
 import dash
 from dash import dcc
@@ -258,6 +282,15 @@ app.layout = html.Div([
     {'label': 'Thursday', 'value': 'Thursday'},
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
+    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', style={'margin': '10px', 'width': '27.6%'}),
+    dcc.Dropdown(id='ath-dropdown', options=[
+    {'label': 'No All-Time High Filter', 'value': False},
+    {'label': 'Yes All-Time High Filter', 'value': True},
+        ], value = 'False', placeholder='Select All-Time High Filter', style={'margin': '10px', 'width': '50%'}),
+    dcc.Dropdown(id='offopen-dropdown', options=[
+    {'label': 'No Off-Open Returns', 'value': False},
+    {'label': 'Yes Off-Open Returns', 'value': True},
+        ], value = 'False', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
     dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
@@ -273,9 +306,6 @@ app.layout = html.Div([
      State('amt-input', 'value'), State('start-date-picker', 'date'), 
      State('end-date-picker', 'date')]
 )
-
-
-
 def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_date):
 
     if n_clicks > 0:
@@ -415,24 +445,36 @@ def generate_excel(n_clicks, ticker, amount):
     [Input('submit-buttons', 'n_clicks')],
     [State('input-tickers', 'value'),
      State('input-amounts', 'value'),
-     State('weekday-filter-dropdown', 'value')]
+     State('weekday-filter-dropdown', 'value'),
+     State('input-high', 'value'),
+     State('offopen-dropdown', 'value'),
+     State('ath-dropdown', 'value')]
 )
-def update_output(n_clicks, ticker, amount, weekday_filter):
+def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen, ath):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything2(ticker, amount, weekday_filter)            
+            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, offopen, ath)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
                 if column == 'date':
                     continue
                 if column == 'Weekday':
+                    continue 
+                if column == '# Day High':
+                    continue
+                if column == 'All Time High':
                     continue
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
+                if column == 'All Time High':
+                    continue
+                if column == '# Day High':
+                    continue
+
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
                     'if': {'filter_query': strin + ' > 0', 'column_id': column},
