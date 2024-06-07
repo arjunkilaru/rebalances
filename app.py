@@ -1,3 +1,4 @@
+import base64
 from dash import dcc, html, Dash, Input, Output, dash_table
 from dash.dependencies import Input, Output, State
 import pandas as pd
@@ -139,10 +140,10 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     elif amount < 0:
         df = df[df['Prev Close to Close'] <= amount]
     else:
-        df = df.tail(30)
+        df = df.tail(15)
     def get_df(row):
         try:
-            date_obj = Timestamp(row.name)
+            date_obj = Timestamp(row['date'])
             eastern = timezone('US/Eastern')
             if date_obj.tzinfo is None:
                 date_obj = eastern.localize(date_obj)
@@ -155,11 +156,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
             date_obj += BDay(2)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-            if np.random.choice([1,2]) ==1:
-                zapi = api
-            else:
-                zapi = api2
-            return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df           
+            return api2.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
         except:
             return pd.DataFrame()
 
@@ -169,8 +166,12 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
         open = float(nowdf['open'][0])
         return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
 
+    df.index = df.index.strftime("%Y-%m-%d")
+    df = df.reset_index()
+    df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
+    if weekday != 'No Weekday Filter':
+        df = df[df['Weekday'] == weekday]
     all_dfs = [get_df(row) for index, row in df.iterrows()]
-
     # Calculate returns for each dataframe and store them in new columns in df
     df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
     df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
@@ -178,12 +179,8 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter"):
     df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
     df = df[['Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
-    df.index = df.index.strftime("%Y-%m-%d")
-    df = df.iloc[::-1].reset_index()
-    df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
-    if weekday != 'No Weekday Filter':
-        df = df[df['Weekday'] == weekday]
-    return df.dropna()
+    df = df.iloc[::-1]
+    return df.dropna().reset_index(drop = True)
 
 import dash
 from dash import dcc
@@ -194,6 +191,7 @@ import dash_bootstrap_components as dbc
 from pandas import Timestamp
 from pytz import timezone
 import warnings
+import io
 warnings.filterwarnings('ignore')
 def color_scale(value, max_value, min_value, start_color, end_color):
     """
@@ -244,8 +242,9 @@ app.layout = html.Div([
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
+    dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='output-table', style={'margin-top': '20px'}),
-
+    dcc.Download(id="download-dataframe2-xlsx"),
     html.Hr(),
     html.H2("Off Open Return - Previous Close-Close Move"),
     html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
@@ -260,7 +259,10 @@ app.layout = html.Div([
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
     dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
+    dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
+    dcc.Download(id="download-dataframe3-xlsx"),
+
 ],)
 
 
@@ -375,6 +377,7 @@ def update_output(n_clicks, ticker, amount):
                     'if': {'filter_query': strin + ' < 0', 'column_id': column},
                     'backgroundColor': '#FF6666 ', 'color':'white'
                 })
+
             return dash_table.DataTable(
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in df.columns],
@@ -387,7 +390,26 @@ def update_output(n_clicks, ticker, amount):
         except Exception as e:
             return html.Div(f"Error fetching data: {str(e)}")
     return html.Div("Submit a ticker and amount to see data.")
-
+@app.callback(
+    Output('download-dataframe2-xlsx', 'data'),
+    [Input('download-button', 'n_clicks')],
+    [State('input-ticker', 'value'),
+     State('input-amount', 'value')]
+)
+def generate_excel(n_clicks, ticker, amount):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            amount = float(amount)
+            df = get_everything(ticker, amount)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Sheet1')
+                writer.close()
+            xlsx_data = output.getvalue()
+            return dcc.send_bytes(xlsx_data, "output.xlsx")
+        except Exception as e:
+            return None
+    return None
 @app.callback(
     Output('doutput-table', 'children'),
     [Input('submit-buttons', 'n_clicks')],
@@ -432,5 +454,26 @@ def update_output(n_clicks, ticker, amount, weekday_filter):
         except Exception as e:
             return html.Div(f"Error fetching data: {str(e)}")
     return html.Div("Submit a ticker and amount to see data.")
+@app.callback(
+    Output('download-dataframe3-xlsx', 'data'),
+    [Input('download-button2', 'n_clicks')],
+    [State('input-ticker', 'value'),
+     State('input-amount', 'value'),
+     State('weekday-filter-dropdown', 'value')]
+)
+def generate_excel(n_clicks, ticker, amount, weekday_filter):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            amount = float(amount)
+            df = get_everything2(ticker, amount, weekday_filter)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Sheet1')
+                writer.close()
+            xlsx_data = output.getvalue()
+            return dcc.send_bytes(xlsx_data, "output.xlsx")
+        except Exception as e:
+            return None
+    return None
 if __name__ == '__main__':
     app.run_server(debug=True, port = 8051)
