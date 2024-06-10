@@ -126,7 +126,7 @@ def get_everything(ticker, amount):
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     return df
-def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = False,  ath = False):
+def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = "No Off Open Returns",  ath = "No All-Time High Filter"):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*10)
     try:
@@ -158,7 +158,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df = df.tail(30)
     if dailyhigh > 0:
         df = df[df['# Day High'] >= dailyhigh]
-    if ath:
+    if ath != 'No All-Time High Filter':
             df = df[df['All Time High'] == True]
 
     def get_df(row):
@@ -191,7 +191,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
     df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
     if weekday != 'No Weekday Filter':
         df = df[df['Weekday'] == weekday]
-    if offopen:
+    if offopen != 'No Off-Open Returns':
         all_dfs = [get_df(row) for index, row in df.iterrows()]
         # Calculate returns for each dataframe and store them in new columns in df
         df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
@@ -285,13 +285,13 @@ app.layout = html.Div([
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', style={'margin': '10px', 'width': '27.6%'}),
     dcc.Dropdown(id='ath-dropdown', options=[
-    {'label': 'No All-Time High Filter', 'value': False},
-    {'label': 'Yes All-Time High Filter', 'value': True},
-        ], value = 'False', placeholder='Select All-Time High Filter', style={'margin': '10px', 'width': '50%'}),
+    {'label': 'No All-Time High Filter', 'value': 'No All-Time High Filter'},
+    {'label': 'Yes All-Time High Filter', 'value': 'Yes All-Time High Filter'},
+        ], value = 'No All-Time High Filter', placeholder='Select All-Time High Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Dropdown(id='offopen-dropdown', options=[
-    {'label': 'No Off-Open Returns', 'value': False},
-    {'label': 'Yes Off-Open Returns', 'value': True},
-        ], value = 'False', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
+    {'label': 'No Off-Open Returns', 'value': 'No Off-Open Returns'},
+    {'label': 'Yes Off-Open Returns', 'value': 'Yes Off-Open Returns'},
+        ], value = 'No Off-Open Returns', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
     dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
