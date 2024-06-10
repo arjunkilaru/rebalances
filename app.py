@@ -204,6 +204,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         return df.dropna().reset_index(drop = True)
 
     else:
+        df = df.iloc[::-1]
         return df[['date', 'Prev Close to Close', 'Close to Open', '# Day High', 'All Time High', 'Weekday']]
 
 import dash
