@@ -16,7 +16,7 @@ config = {}
 config['session'] = True
 config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
-
+import yfinance as yf
 api_key2 = 'PKXY2KAIRXBONPE3U5HA'
 api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
 base_url = 'https://paper-api.alpaca.markets'
@@ -125,6 +125,16 @@ def get_everything(ticker, amount):
     df = df[[ 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
+    try:
+        earnings_hist = pd.DataFrame(yf.Ticker(ticker).get_earnings_dates(limit = 40))
+        earnings_hist['Earnings Date'] = earnings_hist.index
+        earnings_hist_date = earnings_hist['Earnings Date'].dt.date
+        df['Prev Day Earnings'] = df['date'].apply(
+        lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
+    )
+    except:
+        df['Prev Day Earnings'] = np.nan
+
     return df
 def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = "No Off Open Returns",  ath = "No All-Time High Filter"):
     td = pd.to_datetime('today')
@@ -173,7 +183,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
             dst_start = eastern.localize(dst_start)
             dst_end = eastern.localize(dst_end)
-            date_obj += BDay(1)
+            date_obj += BDay(2)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
             return api2.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
@@ -191,6 +201,15 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
     df['Weekday'] = (pd.to_datetime(df['date'])+BDay(1)).dt.day_name()
     if weekday != 'No Weekday Filter':
         df = df[df['Weekday'] == weekday]
+    try:
+        earnings_hist = pd.DataFrame(yf.Ticker(ticker).get_earnings_dates(limit = 40))
+        earnings_hist['Earnings Date'] = earnings_hist.index
+        earnings_hist_date = earnings_hist['Earnings Date'].dt.date
+        df['Prev Day Earnings'] = df['date'].apply(
+        lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
+    )
+    except:
+        df['Prev Day Earnings'] = np.nan
     if offopen != 'No Off-Open Returns':
         all_dfs = [get_df(row) for index, row in df.iterrows()]
         # Calculate returns for each dataframe and store them in new columns in df
@@ -199,13 +218,14 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
         df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
         df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', '# Day High', 'All Time High', 'Weekday']]
+        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
         df = df.iloc[::-1]
+        
         return df.dropna().reset_index(drop = True)
 
     else:
         df = df.iloc[::-1]
-        return df[['date', 'Prev Close to Close', 'Close to Open', '# Day High', 'All Time High', 'Weekday']]
+        return df[['date', 'Prev Close to Close', 'Close to Open', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
 
 import dash
 from dash import dcc
@@ -395,6 +415,8 @@ def update_output(n_clicks, ticker, amount):
             for column in df.columns:
                 if column == 'date':
                     continue
+                if column == 'Prev Day Earnings':
+                    continue
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
@@ -467,6 +489,8 @@ def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen, 
                     continue
                 if column == 'All Time High':
                     continue
+                if column == "Prev Day Earnings":
+                    continue
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
@@ -474,6 +498,8 @@ def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen, 
                 if column == 'All Time High':
                     continue
                 if column == '# Day High':
+                    continue
+                if column == "Prev Day Earnings":
                     continue
 
                 strin = "{" + column + "}"
