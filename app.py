@@ -173,7 +173,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             dst_end = datetime(date_obj.year, 11, 1) + timedelta(days=6 - datetime(date_obj.year, 11, 1).weekday())
             dst_start = eastern.localize(dst_start)
             dst_end = eastern.localize(dst_end)
-            date_obj += BDay(2)
+            date_obj += BDay(1)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
             return api2.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
