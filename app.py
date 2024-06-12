@@ -291,7 +291,7 @@ app.layout = html.Div([
     html.Div(id='output-table', style={'margin-top': '20px'}),
     dcc.Download(id="download-dataframe2-xlsx"),
     html.Hr(),
-    html.H2("Off Open Return - Previous Close-Close Move"),
+    html.H2("Overnight Return - Previous Close-Close Move"),
     html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
     dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
     dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
