@@ -209,8 +209,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
     )
     except Exception as e:
-        print(e)
-        df['Prev Day Earnings'] = np.nan
+        df['Prev Day Earnings'] = e
     if offopen != 'No Off-Open Returns':
         all_dfs = [get_df(row) for index, row in df.iterrows()]
         # Calculate returns for each dataframe and store them in new columns in df
