@@ -250,8 +250,12 @@ def color_scale(value, max_value, min_value, start_color, end_color):
 
 # Define your color range for the gradient here.
 
-
+import dash_auth
+VALID_USERNAME_PASSWORD_PAIRS = {
+    'hello' : 'world'
+}
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 server = app.server
 
 # Create input components
