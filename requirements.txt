@@ -11,3 +11,4 @@ tiingo
 dash-bootstrap-components
 xlsxwriter
 yfinance
+dash_auth
