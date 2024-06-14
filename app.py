@@ -287,7 +287,7 @@ app.layout = html.Div([
     html.Div(id='result-table', style={'margin-top': '20px'}),
     html.Hr(),
     html.H2("Off Open Return - Close to Open Gap Up"),
-    html.P("Visualize returns off the open from when a stock gaps up (close->open return) a certain amount:"),
+    html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
@@ -307,7 +307,7 @@ app.layout = html.Div([
     {'label': 'Thursday', 'value': 'Thursday'},
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', style={'margin': '10px', 'width': '27.6%'}),
+    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default) (You have to put something here)', type='number', style={'margin': '10px', 'width': '29.6%'}),
     dcc.Dropdown(id='ath-dropdown', options=[
     {'label': 'No All-Time High Filter', 'value': 'No All-Time High Filter'},
     {'label': 'Yes All-Time High Filter', 'value': 'Yes All-Time High Filter'},
