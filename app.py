@@ -252,7 +252,7 @@ def color_scale(value, max_value, min_value, start_color, end_color):
 
 import dash_auth
 VALID_USERNAME_PASSWORD_PAIRS = {
-    'hello' : 'world'
+    'merus' : '3ParkAvenue'
 }
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
