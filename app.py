@@ -79,6 +79,7 @@ def get_everything(ticker, amount):
     except:
         return pd.DataFrame()
     df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
+    df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(0),3)
     if amount > 0:
         df = df[df['Close to Open'] >= amount]
     elif amount < 0:
@@ -122,7 +123,7 @@ def get_everything(ticker, amount):
     df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
     df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-    df = df[[ 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']]
+    df = df[['Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     try:
@@ -160,6 +161,8 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
 
     df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
     df['Close to Open'] = round(100*(df['adjOpen'].shift(-1) - df['adjClose'])/df['adjClose'],3)
+    df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(-1),3)
+
     if amount > 0:
         df = df[df['Prev Close to Close'] >= amount]
     elif amount < 0:
@@ -210,7 +213,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
     )
     except Exception as e:
         df['Prev Day Earnings'] = str(e)
-    if offopen != 'No Off-Open Returns':
+    if offopen != 'No Off Open Returns':
         all_dfs = [get_df(row) for index, row in df.iterrows()]
         # Calculate returns for each dataframe and store them in new columns in df
         df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
@@ -218,14 +221,14 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
         df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
         df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
+        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
         df = df.iloc[::-1]
         
         return df.dropna().reset_index(drop = True)
 
     else:
         df = df.iloc[::-1]
-        return df[['date', 'Prev Close to Close', 'Close to Open', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
+        return df[['date', 'Prev Close to Close', 'Close to Open', 'Open to Close', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
 
 import dash
 from dash import dcc
@@ -313,9 +316,9 @@ app.layout = html.Div([
     {'label': 'Yes All-Time High Filter', 'value': 'Yes All-Time High Filter'},
         ], value = 'No All-Time High Filter', placeholder='Select All-Time High Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Dropdown(id='offopen-dropdown', options=[
-    {'label': 'No Off-Open Returns', 'value': 'No Off-Open Returns'},
-    {'label': 'Yes Off-Open Returns', 'value': 'Yes Off-Open Returns'},
-        ], value = 'No Off-Open Returns', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
+    {'label': 'No Off Open Returns', 'value': 'No Off Open Returns'},
+    {'label': 'Yes Off Open Returns', 'value': 'Yes Off-Open Returns'},
+        ], value = 'No Off Open Returns', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
     dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
