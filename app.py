@@ -112,6 +112,8 @@ def get_everything(ticker, amount):
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, min):
+        if len(nowdf) == 0:
+            return np.nan
         open = float(nowdf['open'][0])
         return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
 
