@@ -112,8 +112,6 @@ def get_everything(ticker, amount):
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, min):
-        if len(nowdf) == 0:
-            return np.nan
         open = float(nowdf['open'][0])
         return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
 
@@ -148,23 +146,35 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         return pd.DataFrame()
     highs = []
     at = []
+    lows = []
     blp = df.copy().reset_index()
     for i in range(0,len(blp)):
         dfi = blp.head(i)
         num = dfi[dfi['adjClose'] > blp['adjClose'][i]]
+        numlow = dfi[dfi['adjClose'] < blp['adjClose'][i]]
         if len(num) == 0:
             highs.append(i - 1)
-            at.append(True)
+            at.append(True)       
         else:
             highs.append(i - num.index.tolist()[-1] - 1)
             at.append(False)
+        if len(numlow) == 0:
+            lows.append(i-1)
+        else:
+            lows.append(-1* (i - numlow.index.tolist()[-1] - 1))
+
     df['# Day High'] = highs
+    df['l'] = lows
+    df['# Day High'] = df['# Day High'].replace(0,np.nan)
+    df['# Day High'] = df['# Day High'].fillna(df['l'])
+    del df['l']
     df['All Time High'] = at
 
     df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
     df['Close to Open'] = round(100*(df['adjOpen'].shift(-1) - df['adjClose'])/df['adjClose'],3)
     df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(-1),3)
-
+    if dailyhigh is None:
+        dailyhigh = 0  
     if amount > 0:
         df = df[df['Prev Close to Close'] >= amount]
     elif amount < 0:
@@ -173,6 +183,9 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df = df.tail(30)
     if dailyhigh > 0:
         df = df[df['# Day High'] >= dailyhigh]
+    elif dailyhigh < 0:
+        df = df[df['# Day High'] <= dailyhigh]
+
     if ath != 'No All-Time High Filter':
             df = df[df['All Time High'] == True]
 
@@ -312,7 +325,7 @@ app.layout = html.Div([
     {'label': 'Thursday', 'value': 'Thursday'},
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default) (You have to put something here)', type='number', style={'margin': '10px', 'width': '29.6%'}),
+    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
     dcc.Dropdown(id='ath-dropdown', options=[
     {'label': 'No All-Time High Filter', 'value': 'No All-Time High Filter'},
     {'label': 'Yes All-Time High Filter', 'value': 'Yes All-Time High Filter'},
