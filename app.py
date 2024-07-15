@@ -470,7 +470,8 @@ def update_output(n_clicks, ticker, amount, high1):
                     continue
                 if column == 'Prev Day Earnings':
                     continue
-                if column == '# Day High'
+                if column == '# Day High':
+                    continue
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
