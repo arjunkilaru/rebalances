@@ -71,13 +71,36 @@ def show_all(ticker, data, disc, amt):
         df = df.sort_values(by = 'Date', ascending = False).dropna()
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
-def get_everything(ticker, amount):
+def get_everything(ticker, amount, dailyhigh = 0):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
         return pd.DataFrame()
+    highs = []
+    at = []
+    lows = []
+    blp = df.copy().reset_index()
+    for i in range(0,len(blp)):
+        dfi = blp.head(i)
+        num = dfi[dfi['adjClose'] > blp['adjClose'][i]]
+        numlow = dfi[dfi['adjClose'] < blp['adjClose'][i]]
+        if len(num) == 0:
+            highs.append(i - 1)
+            at.append(True)       
+        else:
+            highs.append(i - num.index.tolist()[-1] - 1)
+            at.append(False)
+        if len(numlow) == 0:
+            lows.append(i-1)
+        else:
+            lows.append(-1* (i - numlow.index.tolist()[-1] - 1))
+
+    df['# Day High'] = highs
+    df['l'] = lows
+    df['# Day High'] = df['# Day High'].replace(0,np.nan)
+    df['# Day High'] = df['# Day High'].fillna(df['l'])
     df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
     df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(0),3)
     if amount > 0:
@@ -86,6 +109,13 @@ def get_everything(ticker, amount):
         df = df[df['Close to Open'] <= amount]
     else:
         df = df.tail(30)
+    if dailyhigh is None:
+        dailyhigh = 0
+    if dailyhigh > 0:
+        df = df[df['# Day High'] >= dailyhigh]
+    elif dailyhigh < 0:
+        df = df[df['# Day High'] <= dailyhigh]
+
 
     def get_df(row):
         date_obj = Timestamp(row.name)
@@ -123,7 +153,7 @@ def get_everything(ticker, amount):
     df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
     df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-    df = df[['Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close']]
+    df = df[['Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     try:
@@ -308,6 +338,7 @@ app.layout = html.Div([
     html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
+    dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='output-table', style={'margin-top': '20px'}),
@@ -425,13 +456,13 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
 Output('output-table', 'children'),
 [Input('submit-button', 'n_clicks')],
 [dash.dependencies.State('input-ticker', 'value'),
-    dash.dependencies.State('input-amount', 'value')]
+    dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value')]
 )
-def update_output(n_clicks, ticker, amount):
+def update_output(n_clicks, ticker, amount, high1):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount)            
+            df = get_everything(ticker, amount, high1)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
@@ -439,6 +470,7 @@ def update_output(n_clicks, ticker, amount):
                     continue
                 if column == 'Prev Day Earnings':
                     continue
+                if column == '# Day High'
                 # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
