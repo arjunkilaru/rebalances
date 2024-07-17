@@ -16,6 +16,7 @@ config = {}
 config['session'] = True
 config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
+
 import yfinance as yf
 api_key2 = 'PKXY2KAIRXBONPE3U5HA'
 api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
@@ -167,12 +168,22 @@ def get_everything(ticker, amount, dailyhigh = 0):
         df['Prev Day Earnings'] = np.nan
 
     return df
-def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = "No Off Open Returns",  ath = "No All-Time High Filter"):
+def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = "No Off Open Returns"):
+    two = False
+    ticker = ticker.replace(" ", "")
+    if "/" in ticker:
+        two = True
+        ticker, back = ticker.split('/', 1)
+    else:
+        back = ""
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
-    except:
+        if two:
+            one = client.get_dataframe(back, frequency='Daily', startDate= start, endDate= td - BDay(1))
+    except Exception as e:
+        print(e)
         return pd.DataFrame()
     highs = []
     at = []
@@ -203,6 +214,12 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
     df['Prev Close to Close'] = round(100 * df['adjClose'].pct_change(),3)
     df['Close to Open'] = round(100*(df['adjOpen'].shift(-1) - df['adjClose'])/df['adjClose'],3)
     df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(-1),3)
+    if two:
+        one['Prev Close to Close'] = round(100 * one['adjClose'].pct_change(),3)
+        one['Close to Open'] = round(100*(one['adjOpen'].shift(-1) - one['adjClose'])/one['adjClose'],3)
+        one['Open to Close'] = round(((one['adjClose'] - one['adjOpen']) / one['adjOpen'] * 100).shift(-1),3)
+        for col in ['Prev Close to Close', 'Close to Open', 'Open to Close']:
+            df[col] = round(df[col] - one[col],3)
     if dailyhigh is None:
         dailyhigh = 0  
     if amount > 0:
@@ -215,11 +232,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df = df[df['# Day High'] >= dailyhigh]
     elif dailyhigh < 0:
         df = df[df['# Day High'] <= dailyhigh]
-
-    if ath != 'No All-Time High Filter':
-            df = df[df['All Time High'] == True]
-
-    def get_df(row):
+    def get_df(row, ticker):
         try:
             date_obj = Timestamp(row['date'])
             eastern = timezone('US/Eastern')
@@ -234,15 +247,22 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             date_obj += BDay(1)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-            return api2.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
+            if np.random.choice([1,2]) ==1:
+                zapi = api
+            else:
+                zapi = api2
+            return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
         except:
             return pd.DataFrame()
 
     def get_rets(nowdf, min):
-        if len(nowdf) == 0:
-            return np.nan
-        open = float(nowdf['open'][0])
-        return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
+        try:
+            if len(nowdf) == 0:
+                return np.nan
+            open = float(nowdf['open'][0])
+            return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
+        except:
+            display(nowdf)
 
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.reset_index()
@@ -257,10 +277,9 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
     )
     except Exception as e:
-        df['Prev Day Earnings'] = str(e)
+        df['Prev Day Earnings'] = "Error getting earnings"
     if offopen != 'No Off Open Returns':
-        all_dfs = [get_df(row) for index, row in df.iterrows()]
-        # Calculate returns for each dataframe and store them in new columns in df
+        all_dfs = [get_df(row, ticker) for index, row in df.iterrows()]
         df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
         df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
         df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
@@ -268,7 +287,18 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
         df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
         df = df.iloc[::-1]
-        
+        if two:
+            one.index = one.index.strftime("%Y-%m-%d")
+            one = one[one.index.isin(df['date'])].reset_index()
+            all_dfs = [get_df(row, back) for index, row in one.iterrows()]
+            one['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
+            one['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
+            one['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
+            one['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
+            one['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
+            one = one[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close']]
+            for col in ['1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return']:
+                df[col] = round(df[col] - one[col],3)
         return df.dropna().reset_index(drop = True)
 
     else:
@@ -346,6 +376,7 @@ app.layout = html.Div([
     html.Hr(),
     html.H2("Overnight Return - Previous Close-Close Move"),
     html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
+    html.P("You can also visualize returns relative to another stock. I.e. entering QQQ/IWM will display QQQ returns relative to IWM."),
     dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
     dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
     dcc.Dropdown(id='weekday-filter-dropdown', options=[
@@ -357,10 +388,6 @@ app.layout = html.Div([
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    dcc.Dropdown(id='ath-dropdown', options=[
-    {'label': 'No All-Time High Filter', 'value': 'No All-Time High Filter'},
-    {'label': 'Yes All-Time High Filter', 'value': 'Yes All-Time High Filter'},
-        ], value = 'No All-Time High Filter', placeholder='Select All-Time High Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Dropdown(id='offopen-dropdown', options=[
     {'label': 'No Off Open Returns', 'value': 'No Off Open Returns'},
     {'label': 'Yes Off Open Returns', 'value': 'Yes Off-Open Returns'},
@@ -527,14 +554,13 @@ def generate_excel(n_clicks, ticker, amount):
      State('input-amounts', 'value'),
      State('weekday-filter-dropdown', 'value'),
      State('input-high', 'value'),
-     State('offopen-dropdown', 'value'),
-     State('ath-dropdown', 'value')]
+     State('offopen-dropdown', 'value'),]
 )
-def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen, ath):
+def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, offopen, ath)            
+            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, offopen)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
