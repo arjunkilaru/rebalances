@@ -27,7 +27,7 @@ api2 = tradeapi.REST(api_key2, api_secret2, base_url, api_version='v2')
 data = pd.read_excel('all_adr_data.xlsx')
 
 def returns(ticker, amount, time_str, open = 'open'):
-    today = datetime.today()
+    today = datetime.today() - BDay(1)
 
     # Calculate the date three years before today
     three_years_ago = today - timedelta(days=365*3)
@@ -74,7 +74,7 @@ def returns(ticker, amount, time_str, open = 'open'):
         else:
             a = a[a['Return from Open'] <= amount]
     else:
-        a = [['intraday return fc', 'return to close']]
+        a = a[['intraday return fc', 'return to close']]
         a.columns = ['Return from Prev Close', 'Return to Close']
         if amount >= 0:
             a = a[a['Return from Prev Close'] >= amount]
