@@ -460,6 +460,7 @@ app.layout = html.Div([
     dcc.Download(id="download-dataframe3-xlsx"),
     html.Hr(),
     html.H2("Intraday Return Visualizer"),
+    html.P("Visualize returns to the close when a stock makes a specific intraday move."), 
     html.Div([
         html.P([
             dcc.Input(id='intraday-ticker', type='text', placeholder='Enter ticker, e.g., AAPL', style={'width': '15%', 'display': 'inline-block', 'margin-right': '5px'}),
