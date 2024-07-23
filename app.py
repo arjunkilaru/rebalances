@@ -35,9 +35,12 @@ def returns(ticker, amount, time_str, open = 'open'):
     # Convert to ISO format for API call (without fractional seconds)
     start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
     end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-
+    if np.random.choice([1,2]) ==1:
+        zapi = api
+    else:
+        zapi = api2
     # Fetch the bar data with a single API call
-    bars = api.get_bars(ticker, '15Min', start=start_time, end=end_time).df
+    bars = zapi.get_bars(ticker, '15Min', start=start_time, end=end_time).df
     bars2 = client.get_dataframe(ticker, frequency='Daily', startDate= start_time, endDate= end_time)
     # Set timezone to Eastern Time
     eastern = timezone('US/Eastern')
