@@ -85,7 +85,7 @@ def returns(ticker, amount, time_str, open = 'open'):
         else:
             a = a[a['Return from Prev Close'] <= amount]
     a = a.reset_index()
-    return a
+    return a.iloc[::-1]
 
 def get_info(ticker, data, disc, amt):
 
