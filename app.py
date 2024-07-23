@@ -753,7 +753,7 @@ def update_intraday_output(n_clicks, ticker, amount, froms, times):
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in df.columns],
                 style_table={'overflowX': 'auto'},
-                page_size=5,
+                page_size=10,
                 style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
                 style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                 style_data_conditional=style_data_conditionals  # Apply color coding
