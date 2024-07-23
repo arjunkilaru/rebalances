@@ -16,6 +16,7 @@ config = {}
 config['session'] = True
 config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
+from pytz import timezone
 
 import yfinance as yf
 api_key2 = 'PKXY2KAIRXBONPE3U5HA'
@@ -24,6 +25,64 @@ base_url = 'https://paper-api.alpaca.markets'
 api2 = tradeapi.REST(api_key2, api_secret2, base_url, api_version='v2')
 
 data = pd.read_excel('all_adr_data.xlsx')
+
+def returns(ticker, amount, time_str, open = 'open'):
+    today = datetime.today()
+
+    # Calculate the date three years before today
+    three_years_ago = today - timedelta(days=365*3)
+
+    # Convert to ISO format for API call (without fractional seconds)
+    start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Fetch the bar data with a single API call
+    bars = api.get_bars(ticker, '15Min', start=start_time, end=end_time).df
+    bars2 = client.get_dataframe(ticker, frequency='Daily', startDate= start_time, endDate= end_time)
+    # Set timezone to Eastern Time
+    eastern = timezone('US/Eastern')
+
+    # Convert the index to the Eastern timezone
+    bars.index = bars.index.tz_convert(eastern)
+
+    # Filter the data to include only normal market hours (9:30 AM to 4:00 PM ET)
+    market_open = datetime.strptime('09:30', '%H:%M').time()
+    market_close = datetime.strptime('16:00', '%H:%M').time()
+    bars = bars.between_time(market_open, market_close)
+    specified_time = datetime.strptime(time_str, '%H:%M').time()
+    bars = bars[bars.index.time <= specified_time]
+
+    zs, zx = bars, bars2
+    zs['day'] = zs.index.date
+    dates = pd.concat([zx[zx['divCash'] != 0], zx[zx['splitFactor'] != 1]])
+    zx['day'] = zx.index.date
+    zs = zs[~zs['day'].isin(dates.index.date)]
+    zx['yesterday close'] = zx['close'].shift(1)
+    zx = zx[['close', 'open', 'yesterday close', 'day']]
+    zx.columns = ['today close', 'today open', 'yesterday close', 'day']
+    a = pd.merge(zs, zx, on='day', how='left')
+    a.index = zs.index
+    a = a.dropna()
+    a['intraday return fc'] = round(100*(a['open'] - a['yesterday close'] ) /a['yesterday close'],3)
+    a['return to close'] = round(100* (a['today close'] - a['open']) / a['open'],3)
+    a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
+    if open.lower() == 'open':
+        a = a[['intraday return fo', 'return to close']]
+        a.columns = ['Return from Open', 'Return to Close']
+        if amount >= 0:
+            a = a[a['Return from Open'] >= amount]
+        else:
+            a = a[a['Return from Open'] <= amount]
+    else:
+        a = [['intraday return fc', 'return to close']]
+        a.columns = ['Return from Prev Close', 'Return to Close']
+        if amount >= 0:
+            a = a[a['Return from Prev Close'] >= amount]
+        else:
+            a = a[a['Return from Prev Close'] <= amount]
+    a = a.reset_index()
+    return a
+
 def get_info(ticker, data, disc, amt):
 
     ticker = ticker.upper()
@@ -312,7 +371,6 @@ from dash import html
 from dash import dash_table
 import dash_bootstrap_components as dbc
 from pandas import Timestamp
-from pytz import timezone
 import warnings
 import io
 warnings.filterwarnings('ignore')
@@ -396,8 +454,34 @@ app.layout = html.Div([
     dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='doutput-table', style={'margin-top': '20px'}),
     dcc.Download(id="download-dataframe3-xlsx"),
+    html.Hr(),
+    html.H2("Intraday Return Visualizer"),
+    html.Div([
+        html.P([
+            dcc.Input(id='intraday-ticker', type='text', placeholder='Enter ticker, e.g., AAPL', style={'width': '15%', 'display': 'inline-block', 'margin-right': '5px'}),
+            html.Span(" has moved ", style={'margin-right': '5px'}),
+            dcc.Input(id='intraday-amount', type='number', placeholder='Percent Move', style={'width': '12%', 'display': 'inline-block', 'margin-right': '5px'}),
+            html.Span(" % from the ", style={'margin-right': '5px'}),
+            dcc.Dropdown(id='intraday-froms', options=[
+                {'label': 'Open', 'value': 'open'},
+                {'label': 'Previous Close', 'value': 'close'}
+            ], placeholder='Select Open or Close', style={'width': '41%', 'display': 'inline-block', 'margin-right': '5px'})
+        ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'}),
+        html.P([
+            html.Span(" at ", style={'margin-right': '5px'}),
+            dcc.Dropdown(id='intraday-times', options=[
+                {'label': f'{hour:02d}:{minute:02d}', 'value': f'{hour:02d}:{minute:02d}'}
+                for hour in range(9, 16) for minute in range(0, 60, 15)
+            ], placeholder='Select Time', style={'width': '40%', 'display': 'inline-block', 'margin-right': '5px'}),
+            html.Span(".")
+        ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'})
+    ]),
+    dbc.Button('Submit', id='intraday-submit', color='primary', n_clicks=0, style={'margin-top': '10px'}),
+    dbc.Button("Download as Excel", id="download-button3", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
+    html.Div(id='intraday-output-table', style={'margin-top': '20px'}),
+    dcc.Download(id="download-dataframe4-xlsx"),
 
-],)
+])
 
 
 @app.callback(
@@ -618,6 +702,73 @@ def generate_excel(n_clicks, ticker, amount, weekday_filter):
         try:
             amount = float(amount)
             df = get_everything2(ticker, amount, weekday_filter)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Sheet1')
+                writer.close()
+            xlsx_data = output.getvalue()
+            return dcc.send_bytes(xlsx_data, "output.xlsx")
+        except Exception as e:
+            return None
+    return None
+
+@app.callback(
+    Output('intraday-output-table', 'children'),
+    Input('intraday-submit', 'n_clicks'),
+    [State('intraday-ticker', 'value'), 
+     State('intraday-amount', 'value'), 
+     State('intraday-froms', 'value'), 
+     State('intraday-times', 'value')]
+)
+def update_intraday_output(n_clicks, ticker, amount, froms, times):
+    if n_clicks > 0 and ticker and amount is not None and froms and times:
+        try:
+            df = returns(ticker, amount, times, froms)
+            df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime("%Y-%m-%d %I:%M %p") if pd.notnull(x) else None)
+
+            # Color coding for values in each column
+            style_data_conditionals = []
+            for column in df.columns:
+                if column == 'timestamp':
+                    continue
+                # Convert column values to numeric
+                df[column] = pd.to_numeric(df[column], errors='coerce')
+            style_data_conditionals = []
+            for column in df.columns:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666', 'color':'white'
+                })
+            return dash_table.DataTable(
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in df.columns],
+                style_table={'overflowX': 'auto'},
+                page_size=8,
+                style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_data_conditional=style_data_conditionals  # Apply color coding
+            )
+        except Exception as e:
+            return html.Div(f"Error fetching data: {str(e)}")
+    return html.Div("Submit a ticker and amount to see data.")
+@app.callback(
+    Output('download-dataframe4-xlsx', 'data'),
+    [Input('download-button3', 'n_clicks')],
+    [State('intraday-ticker', 'value'), 
+     State('intraday-amount', 'value'), 
+     State('intraday-froms', 'value'), 
+     State('intraday-times', 'value')]
+)
+def generate_excel(n_clicks, ticker, amount, froms, times):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            df = returns(ticker, amount, times, froms)
+            df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime("%Y-%m-%d %I:%M %p") if pd.notnull(x) else None)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
