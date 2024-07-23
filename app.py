@@ -66,6 +66,7 @@ def returns(ticker, amount, time_str, open = 'open'):
     a['intraday return fc'] = round(100*(a['open'] - a['yesterday close'] ) /a['yesterday close'],3)
     a['return to close'] = round(100* (a['today close'] - a['open']) / a['open'],3)
     a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
+    a = a.groupby('day').tail(1)
     if open.lower() == 'open':
         a = a[['intraday return fo', 'return to close']]
         a.columns = ['Return from Open', 'Return to Close']
