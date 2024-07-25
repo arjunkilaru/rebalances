@@ -57,7 +57,7 @@ def returns(ticker, amount, time_str, open = 'open'):
     bars = bars[bars.index.time <= specified_time]
 
     zs, zx = bars, bars2
-    zs['Return to 15 Min'] = zs['open'].pct_change().shift(-1)
+    zs['Return to 15 Min'] = round(100*zs['open'].pct_change().shift(-1),3)
 
     
     zs['day'] = zs.index.date
