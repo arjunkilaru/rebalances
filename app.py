@@ -206,9 +206,11 @@ def get_everything(ticker, amount, dailyhigh = 0):
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, min):
-        open = float(nowdf['open'][0])
-        return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
-
+        try:
+            open = float(nowdf['open'][0])
+            return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
+        except:
+            return np.nan
     all_dfs = [get_df(row) for index, row in df.iterrows()]
 
     # Calculate returns for each dataframe and store them in new columns in df
