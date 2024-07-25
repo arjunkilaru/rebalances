@@ -54,11 +54,16 @@ def returns(ticker, amount, time_str, open = 'open'):
     market_close = datetime.strptime('16:00', '%H:%M').time()
     bars = bars.between_time(market_open, market_close)
     specified_time = datetime.strptime(time_str, '%H:%M').time()
+
+    # Add 15 minutes to the specified time
+    bars['Return to 15 Min'] = round(100*bars['open'].pct_change().shift(-1),3)
+
+    # Filter the DataFrame based on the updated time
     bars = bars[bars.index.time <= specified_time]
-
     zs, zx = bars, bars2
-    zs['Return to 15 Min'] = round(100*zs['open'].pct_change().shift(-1),3)
-
+    b=zs
+    b.index = pd.to_datetime(b.index)
+    display(b[b.index.date == pd.to_datetime('2023-03-28').date()])
     
     zs['day'] = zs.index.date
     dates = pd.concat([zx[zx['divCash'] != 0], zx[zx['splitFactor'] != 1]])
