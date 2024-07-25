@@ -27,7 +27,8 @@ api2 = tradeapi.REST(api_key2, api_secret2, base_url, api_version='v2')
 data = pd.read_excel('all_adr_data.xlsx')
 
 def returns(ticker, amount, time_str, open = 'open'):
-    today = datetime.today() - BDay(1)
+    today = datetime.today() -BDay(1)
+    today = today.replace(hour=16, minute=0, second=0, microsecond=0)
 
     # Calculate the date three years before today
     three_years_ago = today - timedelta(days=365*3)
@@ -56,6 +57,9 @@ def returns(ticker, amount, time_str, open = 'open'):
     bars = bars[bars.index.time <= specified_time]
 
     zs, zx = bars, bars2
+    zs['Return to 15 Min'] = zs['open'].pct_change().shift(-1)
+
+    
     zs['day'] = zs.index.date
     dates = pd.concat([zx[zx['divCash'] != 0], zx[zx['splitFactor'] != 1]])
     zx['day'] = zx.index.date
@@ -71,15 +75,15 @@ def returns(ticker, amount, time_str, open = 'open'):
     a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
     a = a.groupby('day').tail(1)
     if open.lower() == 'open':
-        a = a[['intraday return fo', 'return to close']]
-        a.columns = ['Return from Open', 'Return to Close']
+        a = a[['intraday return fo', 'Return to 15 Min', 'return to close']]
+        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close']
         if amount >= 0:
             a = a[a['Return from Open'] >= amount]
         else:
             a = a[a['Return from Open'] <= amount]
     else:
-        a = a[['intraday return fc', 'return to close']]
-        a.columns = ['Return from Prev Close', 'Return to Close']
+        a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
+        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close']
         if amount >= 0:
             a = a[a['Return from Prev Close'] >= amount]
         else:
