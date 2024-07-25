@@ -63,7 +63,6 @@ def returns(ticker, amount, time_str, open = 'open'):
     zs, zx = bars, bars2
     b=zs
     b.index = pd.to_datetime(b.index)
-    display(b[b.index.date == pd.to_datetime('2023-03-28').date()])
     
     zs['day'] = zs.index.date
     dates = pd.concat([zx[zx['divCash'] != 0], zx[zx['splitFactor'] != 1]])
