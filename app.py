@@ -473,6 +473,7 @@ app.layout = html.Div([
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
     dcc.Input(id='input-ud', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+    html.Br(),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='output-table', style={'margin-top': '20px'}),
