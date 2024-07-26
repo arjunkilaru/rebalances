@@ -179,6 +179,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     df['Price Change'] = df['adjClose'].diff()
     df['Price Change'] = df['Price Change'].apply(lambda x: 1 if x>0 else -1)
     df['Consecutive Up/Down Days'] = df['Price Change'].groupby((df['Price Change'] != df['Price Change'].shift()).cumsum()).cumsum()
+    df['Consecutive Up/Down Days'] = df['Consecutive Up/Down Days'].shift(1)
     if consq is None:
         consq = 0
     if consq != 0:
@@ -472,7 +473,7 @@ app.layout = html.Div([
     dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
     dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
     dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    dcc.Input(id='input-ud', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+    dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
     html.Br(),
     dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
     dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
