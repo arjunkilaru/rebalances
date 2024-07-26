@@ -241,7 +241,7 @@ def get_everything(ticker, amount, dailyhigh = 0):
         df['Prev Day Earnings'] = np.nan
 
     return df
-def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, offopen = "No Off Open Returns"):
+def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, consq = 0, offopen = "No Off Open Returns"):
     two = False
     ticker = ticker.replace(" ", "")
     if "/" in ticker:
@@ -293,6 +293,23 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         one['Open to Close'] = round(((one['adjClose'] - one['adjOpen']) / one['adjOpen'] * 100).shift(-1),3)
         for col in ['Prev Close to Close', 'Close to Open', 'Open to Close']:
             df[col] = round(df[col] - one[col],3)
+    
+    if not two:
+        df['Price Change'] = df['adjClose'].diff()
+        df['Price Change'] = df['Price Change'].apply(lambda x: 1 if x>0 else -1)
+        df['Consecutive Up/Down Days'] = df['Price Change'].groupby((df['Price Change'] != df['Price Change'].shift()).cumsum()).cumsum()
+    if two:
+        df['Price Change'] = np.sign(df['Prev Close to Close'])
+        df['Price Change'] = df['Price Change'].apply(lambda x: 1 if x>0 else -1)
+        df['Consecutive Up/Down Days'] = df['Price Change'].groupby((df['Price Change'] != df['Price Change'].shift()).cumsum()).cumsum()
+    if consq is None:
+        consq = 0
+    if consq != 0:
+        if consq > 0:
+            df = df[df['Consecutive Up/Down Days'] >= consq]
+        elif consq < 0:
+            df = df[df['Consecutive Up/Down Days'] <= consq]
+
     if dailyhigh is None:
         dailyhigh = 0  
     if amount > 0:
@@ -305,6 +322,8 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df = df[df['# Day High'] >= dailyhigh]
     elif dailyhigh < 0:
         df = df[df['# Day High'] <= dailyhigh]
+
+        
     def get_df(row, ticker):
         try:
             date_obj = Timestamp(row['date'])
@@ -335,7 +354,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             open = float(nowdf['open'][0])
             return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
         except:
-            display(nowdf)
+            return np.nan
 
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.reset_index()
@@ -358,7 +377,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
         df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
         df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
+        df = df[['date', 'Prev Close to Close', 'Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'All Time High', 'Consecutive Up/Down Days','Prev Day Earnings', 'Weekday']]
         df = df.iloc[::-1]
         if two:
             one.index = one.index.strftime("%Y-%m-%d")
@@ -376,7 +395,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
 
     else:
         df = df.iloc[::-1]
-        return df[['date', 'Prev Close to Close', 'Close to Open', 'Open to Close', '# Day High', 'All Time High', 'Prev Day Earnings', 'Weekday']]
+        return df[['date', 'Prev Close to Close', 'Close to Open', 'Open to Close', '# Day High', 'All Time High' ,'Consecutive Up/Down Days','Prev Day Earnings', 'Weekday']]
 
 import dash
 from dash import dcc
@@ -460,6 +479,7 @@ app.layout = html.Div([
     {'label': 'Friday', 'value': 'Friday'},
         ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
     dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+    dcc.Input(id='input-updown', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
     dcc.Dropdown(id='offopen-dropdown', options=[
     {'label': 'No Off Open Returns', 'value': 'No Off Open Returns'},
     {'label': 'Yes Off Open Returns', 'value': 'Yes Off-Open Returns'},
@@ -653,36 +673,25 @@ def generate_excel(n_clicks, ticker, amount):
      State('input-amounts', 'value'),
      State('weekday-filter-dropdown', 'value'),
      State('input-high', 'value'),
+     State('input-updown', 'value'),
      State('offopen-dropdown', 'value'),]
 )
-def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen):
+def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, consq, offopen):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, offopen)            
+            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, consq, offopen)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
-                if column == 'date':
+                if column in ['date', 'Weekday', '# Day High', 'All Time High', 'Prev Day Earnings', 'Consecutive Up/Down Days']:
                     continue
-                if column == 'Weekday':
-                    continue 
-                if column == '# Day High':
-                    continue
-                if column == 'All Time High':
-                    continue
-                if column == "Prev Day Earnings":
-                    continue
-                # Convert column values to numeric
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
-                if column == 'All Time High':
+                if column in ['All Time High', '# Day High', 'Prev Day Earnings', 'Consecutive Up/Down Days']:
                     continue
-                if column == '# Day High':
-                    continue
-                if column == "Prev Day Earnings":
-                    continue
+
 
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
@@ -708,15 +717,18 @@ def update_output(n_clicks, ticker, amount, weekday_filter, dailyhigh, offopen):
 @app.callback(
     Output('download-dataframe3-xlsx', 'data'),
     [Input('download-button2', 'n_clicks')],
-    [State('input-ticker', 'value'),
-     State('input-amount', 'value'),
-     State('weekday-filter-dropdown', 'value')]
+    [State('input-tickers', 'value'),
+     State('input-amounts', 'value'),
+     State('weekday-filter-dropdown', 'value'),
+     State('input-high', 'value'),
+     State('input-updown', 'value'),
+     State('offopen-dropdown', 'value'),]
 )
-def generate_excel(n_clicks, ticker, amount, weekday_filter):
+def generate_excel(n_clicks, ticker, amount, weekday_filter, dailyhigh, consq, offopen):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything2(ticker, amount, weekday_filter)
+            df = get_everything2(ticker, amount, weekday_filter, dailyhigh, consq, offopen)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
