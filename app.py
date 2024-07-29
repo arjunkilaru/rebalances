@@ -44,7 +44,7 @@ def returns(ticker, amount, time_str, open = 'open'):
     blip = np.random.choice([1,3])
     if blip == 1:
         zapi = api
-    else if blip == 2:
+    elif blip == 2:
         zapi = api2
     else:
         zapi = api3
@@ -230,7 +230,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         blip = np.random.choice([1,3])
         if blip == 1:
             zapi = api
-        else if blip == 2:
+        elif blip == 2:
             zapi = api2
         else:
             zapi = api3        
@@ -366,7 +366,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             blip = np.random.choice([1,3])
             if blip == 1:
                 zapi = api
-            else if blip == 2:
+            elif blip == 2:
                 zapi = api2
             else:
                 zapi = api3     
