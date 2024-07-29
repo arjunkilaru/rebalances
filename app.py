@@ -24,6 +24,11 @@ api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
 base_url = 'https://paper-api.alpaca.markets'
 api2 = tradeapi.REST(api_key2, api_secret2, base_url, api_version='v2')
 
+api_key3 = 'PKVTHPR9MG1N0OU7NADW'
+api_secret3 = 'xR6Wsy8ZBEOMEq3Fb7DEwTVHva4pFsXzwMGzd3Du'
+base_url = 'https://paper-api.alpaca.markets'
+api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
+
 data = pd.read_excel('all_adr_data.xlsx')
 
 def returns(ticker, amount, time_str, open = 'open'):
@@ -36,10 +41,13 @@ def returns(ticker, amount, time_str, open = 'open'):
     # Convert to ISO format for API call (without fractional seconds)
     start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
     end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-    if np.random.choice([1,2]) ==1:
+    blip = np.random.choice([1,3]) ==1:
+    if blip == 1:
         zapi = api
-    else:
+    else if blip == 2:
         zapi = api2
+    else:
+        zapi = api3
     # Fetch the bar data with a single API call
     bars = zapi.get_bars(ticker, '15Min', start=start_time, end=end_time).df
     bars2 = client.get_dataframe(ticker, frequency='Daily', startDate= start_time, endDate= end_time)
@@ -219,10 +227,13 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         date_obj += BDay(1)
         start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
         end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-        if np.random.choice([1,2]) ==1:
+        blip = np.random.choice([1,3]) ==1:
+        if blip == 1:
             zapi = api
-        else:
+        else if blip == 2:
             zapi = api2
+        else:
+            zapi = api3        
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, min):
@@ -352,10 +363,13 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             date_obj += BDay(1)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-            if np.random.choice([1,2]) ==1:
+            blip = np.random.choice([1,3]) ==1:
+            if blip == 1:
                 zapi = api
-            else:
+            else if blip == 2:
                 zapi = api2
+            else:
+                zapi = api3     
             return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df     
         except:
             return pd.DataFrame()
