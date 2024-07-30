@@ -41,7 +41,7 @@ def returns(ticker, amount, time_str, open = 'open'):
     # Convert to ISO format for API call (without fractional seconds)
     start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
     end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-    blip = np.random.choice([1,3])
+    blip = np.random.choice([1,2,3])
     if blip == 1:
         zapi = api
     elif blip == 2:
@@ -227,7 +227,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         date_obj += BDay(1)
         start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
         end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-        blip = np.random.choice([1,3])
+        blip = np.random.choice([1,2,3])
         if blip == 1:
             zapi = api
         elif blip == 2:
@@ -363,7 +363,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
             date_obj += BDay(1)
             start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
             end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
-            blip = np.random.choice([1,3])
+            blip = np.random.choice([1,2,3])
             if blip == 1:
                 zapi = api
             elif blip == 2:
