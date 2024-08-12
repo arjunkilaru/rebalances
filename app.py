@@ -225,7 +225,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         else:
             time_offset = "-05:00"
         date_obj += BDay(1)
-        start_time = date_obj.replace(hour=9, minute=30, second=0).isoformat()
+        start_time = date_obj.replace(hour=9, minute=24, second=0).isoformat()
         end_time = (date_obj + pd.offsets.BusinessDay(0)).replace(hour=11, minute=0, second=0).isoformat() 
         blip = np.random.choice([1,2,3])
         if blip == 1:
@@ -236,21 +236,32 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
             zapi = api3        
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
-    def get_rets(nowdf, min):
+    def get_rets(nowdf, timez):
+        first_row_hour = nowdf.index[0].hour
+        target_time = pd.to_datetime(f'{first_row_hour}:{timez:02d}:00').time()
+
+        open_time = pd.to_datetime(f'{first_row_hour}:30:00').time()
+        row_1430 = nowdf[nowdf.index.time == open_time]
         try:
-            open = float(nowdf['open'][0])
-            return round(100*(float(nowdf.head(min+1)['open'][-1]) - open)/open,3)
-        except:
+            open = row_1430['open'].iloc[0]
+            row_time = nowdf[nowdf.index.time == target_time]
+            if target_time == pd.to_datetime(f'{first_row_hour}:24:00').time():
+                return round(100 * (open - row_time['open'].iloc[0]) / open, 3)
+            else:
+                return round(100 * (row_time['open'].iloc[0] - open) / row_time['open'].iloc[0], 3)
+
+        except Exception as e:
             return np.nan
     all_dfs = [get_df(row) for index, row in df.iterrows()]
 
     # Calculate returns for each dataframe and store them in new columns in df
-    df['1 Min Return'] = [get_rets(df, 1) for df in all_dfs]
-    df['3 Min Return'] = [get_rets(df, 3) for df in all_dfs]
-    df['5 Min Return'] = [get_rets(df, 5) for df in all_dfs]
-    df['10 Min Return'] = [get_rets(df, 10) for df in all_dfs]
-    df['15 Min Return'] = [get_rets(df, 15) for df in all_dfs]
-    df = df[['Close to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days']]
+    df['9:24 to Open'] = [get_rets(df, 24) for df in all_dfs]
+    df['1 Min Return'] = [get_rets(df, 31) for df in all_dfs]
+    df['3 Min Return'] = [get_rets(df, 33) for df in all_dfs]
+    df['5 Min Return'] = [get_rets(df, 35) for df in all_dfs]
+    df['10 Min Return'] = [get_rets(df, 40) for df in all_dfs]
+    df['15 Min Return'] = [get_rets(df, 45) for df in all_dfs]
+    df = df[['Close to Open', '9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     try:
@@ -263,7 +274,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     except:
         df['Prev Day Earnings'] = np.nan
 
-    return df.dropna()
+    return df
 
 def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, consq = 0, offopen = "No Off Open Returns"):
     two = False
