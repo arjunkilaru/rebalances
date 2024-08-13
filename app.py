@@ -237,12 +237,12 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         return zapi.get_bars(ticker, '1Min', start=start_time, end=end_time).df    
 
     def get_rets(nowdf, timez):
-        first_row_hour = nowdf.index[0].hour
-        target_time = pd.to_datetime(f'{first_row_hour}:{timez:02d}:00').time()
-
-        open_time = pd.to_datetime(f'{first_row_hour}:30:00').time()
-        row_1430 = nowdf[nowdf.index.time == open_time]
         try:
+            first_row_hour = nowdf.index[0].hour
+            target_time = pd.to_datetime(f'{first_row_hour}:{timez:02d}:00').time()
+
+            open_time = pd.to_datetime(f'{first_row_hour}:30:00').time()
+            row_1430 = nowdf[nowdf.index.time == open_time]
             open = row_1430['open'].iloc[0]
             row_time = nowdf[nowdf.index.time == target_time]
             if target_time == pd.to_datetime(f'{first_row_hour}:24:00').time():
@@ -253,7 +253,6 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
         except Exception as e:
             return np.nan
     all_dfs = [get_df(row) for index, row in df.iterrows()]
-
     # Calculate returns for each dataframe and store them in new columns in df
     df['9:24 to Open'] = [get_rets(df, 24) for df in all_dfs]
     df['1 Min Return'] = [get_rets(df, 31) for df in all_dfs]
@@ -274,7 +273,8 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     except:
         df['Prev Day Earnings'] = np.nan
 
-    return df
+    return df.dropna(subset = ['9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return'])
+
 
 def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, consq = 0, offopen = "No Off Open Returns"):
     two = False
