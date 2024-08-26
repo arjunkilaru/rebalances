@@ -273,7 +273,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     except:
         df['Prev Day Earnings'] = np.nan
 
-    return df.dropna(subset = ['9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return'])
+    return df.dropna(subset = ['9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return'], how = 'all')
 
 
 def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0, consq = 0, offopen = "No Off Open Returns"):
