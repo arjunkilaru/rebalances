@@ -151,6 +151,56 @@ def show_all(ticker, data, disc, amt):
         df = df.sort_values(by = 'Date', ascending = False).dropna()
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
+    
+import yfinance as yf
+
+def get_earnings(ticker, amount):
+    td = pd.to_datetime('today')
+    start = td - timedelta(days = 365*8)
+    try:
+        df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
+        a = df
+    except:
+        return pd.DataFrame()
+    earnings_hist = pd.DataFrame(yf.Ticker(ticker).get_earnings_dates(limit = 40))
+    earnings_hist['Earnings Date'] = earnings_hist.index
+    earnings_hist_date = earnings_hist['Earnings Date'].dt.date
+    df = df.reset_index()
+    df['Prev Day Earnings'] = df['date'].apply(
+    lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
+)
+
+    df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
+    df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(0),3)
+    df = df[df['Prev Day Earnings'] == 'Yes']
+    if amount > 0:
+        df = df[df['Close to Open'] >= amount]
+    elif amount < 0:
+        df = df[df['Close to Open'] <= amount]
+    else:
+        df = df.tail(30)
+    df = df[df['Prev Day Earnings'] == 'Yes']
+    df = df.set_index('date')
+    df['Earnings Day Return'] = df['Close to Open'] + df['Open to Close']
+    df = df[['adjClose', 'Earnings Day Return']]
+    def get_dfs(row, time):
+        x = (row.name + BDay(time))
+        a1 = (a[a.index == x])
+        if len(a1) == 0:
+            a1 = (a[a.index == x+BDay(1)])
+        if len(a1) >0:
+            return a1['adjClose'].iloc[0]
+        else:
+            return np.nan
+    df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['3 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose']
+    df.index = df.index.strftime("%Y-%m-%d")
+    df = df.reset_index()
+    return df
+
 def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
@@ -555,6 +605,13 @@ app.layout = html.Div([
     dbc.Button("Download as Excel", id="download-button3", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
     html.Div(id='intraday-output-table', style={'margin-top': '20px'}),
     dcc.Download(id="download-dataframe4-xlsx"),
+    html.Hr(),
+    html.H2("Earnings Long-Term Return Visualizer"),
+    html.P("Visualize returns up to 3 months after a specific earnings move."), 
+    dbc.Input(id='input-tickerss', type='text', placeholder='Enter ticker, e.g., TSLA'),
+    dbc.Input(id='input-amountss', type='number', placeholder='Enter close-close earnings move'),
+    dbc.Button('Submit', id='submit-buttonss', color='primary', n_clicks=0),
+    html.Div(id='earn-output-table', style={'margin-top': '20px'}),
 
 ])
 
@@ -841,5 +898,46 @@ def generate_excel(n_clicks, ticker, amount, froms, times):
         except Exception as e:
             return None
     return None
+@app.callback(
+    Output('earn-output-table', 'children'),
+    [Input('submit-buttonss', 'n_clicks')],
+    [State('input-tickerss', 'value'),],
+    [State('input-amountss', 'value')]
+)
+def update_output(n_clicks, ticker, amount):
+    if n_clicks > 0 and ticker and amount is not None:
+        try:
+            amount = float(amount)
+            df = get_earnings(ticker, amount)            
+            # Color coding for values in each column
+            style_data_conditionals = []
+            for column in df.columns:
+                if column in ['date']:
+                    continue
+                df[column] = pd.to_numeric(df[column], errors='coerce')
+            style_data_conditionals = []
+            for column in df.columns:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22 ', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666 ', 'color':'white'
+                })
+            return dash_table.DataTable(
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in df.columns],
+                style_table={'overflowX': 'auto'},
+                page_size=5,
+                style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_data_conditional=style_data_conditionals  # Apply color coding
+            )
+        except Exception as e:
+            return html.Div(f"Error fetching data: {str(e)}")
+    return html.Div("Submit a ticker and amount to see data.")
+
 if __name__ == '__main__':
     app.run_server(debug=True, port = 8051)
