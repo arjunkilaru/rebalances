@@ -77,25 +77,27 @@ def returns(ticker, amount, time_str, open = 'open'):
     zx['day'] = zx.index.date
     zs = zs[~zs['day'].isin(dates.index.date)]
     zx['yesterday close'] = zx['close'].shift(1)
-    zx = zx[['close', 'open', 'yesterday close', 'day']]
-    zx.columns = ['today close', 'today open', 'yesterday close', 'day']
+    zx['tomorrow open'] = zx['open'].shift(-1)
+    zx = zx[['tomorrow open', 'close', 'open', 'yesterday close', 'day']]
+    zx.columns = ['tomorrow open', 'today close', 'today open', 'yesterday close', 'day']
     a = pd.merge(zs, zx, on='day', how='left')
     a.index = zs.index
     a = a.dropna()
     a['intraday return fc'] = round(100*(a['open'] - a['yesterday close'] ) /a['yesterday close'],3)
     a['return to close'] = round(100* (a['today close'] - a['open']) / a['open'],3)
+    a['return to next open'] = round(100* (a['tomorrow open'] - a['open']) / a['open'],3)
     a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
     a = a.groupby('day').tail(1)
     if open.lower() == 'open':
-        a = a[['intraday return fo', 'Return to 15 Min', 'return to close']]
-        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close']
+        a = a[['intraday return fo', 'Return to 15 Min', 'return to close', 'return to next open']]
+        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
         if amount >= 0:
             a = a[a['Return from Open'] >= amount]
         else:
             a = a[a['Return from Open'] <= amount]
     else:
         a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
-        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close']
+        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
         if amount >= 0:
             a = a[a['Return from Prev Close'] >= amount]
         else:
@@ -597,7 +599,8 @@ app.layout = html.Div([
             html.Span(" at ", style={'margin-right': '5px'}),
             dcc.Dropdown(id='intraday-times', options=[
                 {'label': f'{hour:02d}:{minute:02d}', 'value': f'{hour:02d}:{minute:02d}'}
-                for hour in range(9, 16) for minute in range(0, 60, 15)
+                for hour in range(9, 17) for minute in range(0, 60, 15)
+                if not (hour == 16 and minute > 0)
             ], placeholder='Select Time', style={'width': '40%', 'display': 'inline-block', 'margin-right': '5px'}),
             html.Span(".")
         ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'})
