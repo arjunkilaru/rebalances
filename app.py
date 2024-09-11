@@ -96,7 +96,7 @@ def returns(ticker, amount, time_str, open = 'open'):
         else:
             a = a[a['Return from Open'] <= amount]
     else:
-        a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
+        a = a[['intraday return fc', 'Return to 15 Min', 'return to close', 'return to next open']]
         a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
         if amount >= 0:
             a = a[a['Return from Prev Close'] >= amount]
