@@ -85,7 +85,7 @@ def rsi(ticker, days, rs):
     if rs > 0:
         bars2 = bars2[bars2['rsi'] >= rs]
     elif rs < 0:
-        bars2 = bars2[bars2['rsi'] <= rs]
+        bars2 = bars2[bars2['rsi'] <= -1*rs]
     else:
         bars2 = bars2.head(50)
     bars2.columns = ['Close Price', 'RSI', 'Close to Next Open', 'Close to Next Close', 'T+2', 'T + 1 Week', 'T + 2 Week']
