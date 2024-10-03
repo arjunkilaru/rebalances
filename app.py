@@ -31,6 +31,68 @@ api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
 
 data = pd.read_excel('all_adr_data.xlsx')
 
+def rsi(ticker, days, rs):
+    today = datetime.today() -BDay(1)
+    today = today.replace(hour=16, minute=0, second=0, microsecond=0)
+
+    # Calculate the date three years before today
+    three_years_ago = today - timedelta(days=365*3)
+
+    # Convert to ISO format for API call (without fractional seconds)
+    start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
+    blip = np.random.choice([1,2,3])
+    if blip == 1:
+        zapi = api
+    elif blip == 2:
+        zapi = api2
+    else:
+        zapi = api3
+    # Fetch the bar data with a single API call
+    #bars = zapi.get_bars(ticker, '15Min', start=start_time, end=end_time).df
+    bars2 = client.get_dataframe(ticker, frequency='Daily', startDate= start_time, endDate= end_time)
+    bars2['Close to Open'] = bars2['adjOpen'].shift(-1)
+    bars2['Close to Open'] = round(100*(bars2['Close to Open'] - bars2['adjClose'])/bars2['adjClose'],3)
+    bars2['1dayret'] = bars2['adjClose'].shift(-1)
+    bars2['1dayret'] = round(100*(bars2['1dayret'] - bars2['adjClose'])/bars2['adjClose'],3)
+    bars2['2dayret'] = bars2['adjClose'].shift(-2)
+    bars2['2dayret'] = round(100*(bars2['2dayret'] - bars2['adjClose'])/bars2['adjClose'],3)
+    bars2['1weekret'] = bars2['adjClose'].shift(-5)
+    bars2['1weekret'] = round(100*(bars2['1weekret'] - bars2['adjClose'])/bars2['adjClose'],3)
+    bars2['2weekret'] = bars2['adjClose'].shift(-10)
+    bars2['2weekret'] = round(100*(bars2['2weekret'] - bars2['adjClose'])/bars2['adjClose'],3)
+    bars2['diff'] = bars2['adjClose'].diff(1)
+    bars2['gain'] = bars2['diff'].clip(lower=0).round(2)
+    bars2['loss'] = bars2['diff'].clip(upper=0).abs().round(2)
+    bars2['avg_gain'] = bars2['gain'].rolling(window=days, min_periods=days).mean()[:days+1]
+    bars2['avg_loss'] = bars2['loss'].rolling(window=days, min_periods=days).mean()[:days+1]
+    for i, row in enumerate(bars2['avg_gain'].iloc[days+1:]):
+        bars2['avg_gain'].iloc[i + days + 1] =\
+            (bars2['avg_gain'].iloc[i + days] *
+            (days - 1) +
+            bars2['gain'].iloc[i + days + 1])\
+            / days
+    # Average Losses
+    for i, row in enumerate(bars2['avg_loss'].iloc[days+1:]):
+        bars2['avg_loss'].iloc[i + days + 1] =\
+            (bars2['avg_loss'].iloc[i + days] *
+            (days - 1) +
+            bars2['loss'].iloc[i + days + 1])\
+            / days
+    bars2['rs'] = bars2['avg_gain'] / bars2['avg_loss']
+    bars2['rsi'] = round(100 - (100 / (1.0 + bars2['rs'])),3)
+    bars2 = bars2[['adjClose', 'rsi', 'Close to Open', '1dayret', '2dayret', '1weekret', '2weekret']].dropna()
+    if rs > 0:
+        bars2 = bars2[bars2['rsi'] >= rs]
+    elif rs < 0:
+        bars2 = bars2[bars2['rsi'] <= rs]
+    else:
+        bars2 = bars2.head(50)
+    bars2.columns = ['Close Price', 'RSI', 'Close to Next Open', 'Close to Next Close', 'T+2', 'T + 1 Week', 'T + 2 Week']
+    a =  bars2.iloc[::-1].reset_index()
+    a['date'] = a['date'].apply(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'))
+    return a
+
 def returns(ticker, amount, time_str, open = 'open'):
     today = datetime.today() -BDay(1)
     today = today.replace(hour=16, minute=0, second=0, microsecond=0)
@@ -77,27 +139,25 @@ def returns(ticker, amount, time_str, open = 'open'):
     zx['day'] = zx.index.date
     zs = zs[~zs['day'].isin(dates.index.date)]
     zx['yesterday close'] = zx['close'].shift(1)
-    zx['tomorrow open'] = zx['open'].shift(-1)
-    zx = zx[['tomorrow open', 'close', 'open', 'yesterday close', 'day']]
-    zx.columns = ['tomorrow open', 'today close', 'today open', 'yesterday close', 'day']
+    zx = zx[['close', 'open', 'yesterday close', 'day']]
+    zx.columns = ['today close', 'today open', 'yesterday close', 'day']
     a = pd.merge(zs, zx, on='day', how='left')
     a.index = zs.index
     a = a.dropna()
     a['intraday return fc'] = round(100*(a['open'] - a['yesterday close'] ) /a['yesterday close'],3)
     a['return to close'] = round(100* (a['today close'] - a['open']) / a['open'],3)
-    a['return to next open'] = round(100* (a['tomorrow open'] - a['open']) / a['open'],3)
     a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
     a = a.groupby('day').tail(1)
     if open.lower() == 'open':
-        a = a[['intraday return fo', 'Return to 15 Min', 'return to close', 'return to next open']]
-        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
+        a = a[['intraday return fo', 'Return to 15 Min', 'return to close']]
+        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close']
         if amount >= 0:
             a = a[a['Return from Open'] >= amount]
         else:
             a = a[a['Return from Open'] <= amount]
     else:
-        a = a[['intraday return fc', 'Return to 15 Min', 'return to close', 'return to next open']]
-        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
+        a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
+        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close']
         if amount >= 0:
             a = a[a['Return from Prev Close'] >= amount]
         else:
@@ -194,14 +254,13 @@ def get_earnings(ticker, amount):
             return a1['adjClose'].iloc[0]
         else:
             return np.nan
-    df['1 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose'],3)
-    df['2 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose'],3)
-    df['1 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose'],3)
-    df['2 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose'],3)
-    df['3 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose'],3)
+    df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['3 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose']
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.reset_index()
-    del df['adjClose']
     return df
 
 def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
@@ -601,6 +660,7 @@ app.layout = html.Div([
                 {'label': f'{hour:02d}:{minute:02d}', 'value': f'{hour:02d}:{minute:02d}'}
                 for hour in range(9, 17) for minute in range(0, 60, 15)
                 if not (hour == 16 and minute > 0)
+
             ], placeholder='Select Time', style={'width': '40%', 'display': 'inline-block', 'margin-right': '5px'}),
             html.Span(".")
         ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'})
@@ -616,9 +676,16 @@ app.layout = html.Div([
     dbc.Input(id='input-amountss', type='number', placeholder='Enter close-close earnings move'),
     dbc.Button('Submit', id='submit-buttonss', color='primary', n_clicks=0),
     html.Div(id='earn-output-table', style={'margin-top': '20px'}),
-
+    html.Hr(),
+    html.H2("RSI Backtest Visualizer"),
+    html.P("Visualize short term and long term moves corresponding to specific RSI levels"),
+    html.P("NOTE: Positive RSI input shows days with >= RSI. Negative RSI input shows days with <= RSI"),
+    dbc.Input(id = 'input-tickerrsi', type = 'text', placeholder = 'Enter ticker, e.g., AMD'),
+    dbc.Input(id = 'input-days', type = 'number', placeholder = 'Enter No. Day RSI used for calculation, e.g., 14'),
+    dbc.Input(id = 'input-rsi', type = 'number', placeholder = 'Enter RSI used for filtering. Negative number = upper bound, Positive number = lower bound.'),
+    dbc.Button('Submit', id = 'submit-rsi', color = 'primary', n_clicks = 0),
+    html.Div(id = 'rsi-output-table', style = {'margin-top':'20px'}),
 ])
-
 
 @app.callback(
     Output('result-table', 'children'),
@@ -942,6 +1009,49 @@ def update_output(n_clicks, ticker, amount):
         except Exception as e:
             return html.Div(f"Error fetching data: {str(e)}")
     return html.Div("Submit a ticker and amount to see data.")
+@app.callback(
+    Output('rsi-output-table', 'children'),
+    [Input('submit-rsi', 'n_clicks')],
+    [State('input-tickerrsi', 'value'),],
+    [State('input-days', 'value')],
+    [State('input-rsi', 'value')]
+)
+def update_output(n_clicks, ticker, days, rs):
+    if n_clicks > 0 and ticker and days and rs is not None:
+        try:
+            days = int(days)
+            rs = float(rs)
+            df = rsi(ticker, days, rs)     
+            # Color coding for values in each column
+            style_data_conditionals = []
+            for column in df.columns:
+                if column in ['date', 'RSI', 'Close Price']:
+                    continue
+                df[column] = pd.to_numeric(df[column], errors='coerce')
+            style_data_conditionals = []
+            for column in df.columns:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22 ', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666 ', 'color':'white'
+                })
+            return dash_table.DataTable(
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in df.columns],
+                style_table={'overflowX': 'auto'},
+                page_size=5,
+                style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_data_conditional=style_data_conditionals  # Apply color coding
+            )
+        except Exception as e:
+            return html.Div(f"Error fetching data: {str(e)}")
+    return html.Div("Submit a ticker and amount to see data.")
+
 
 if __name__ == '__main__':
     app.run_server(debug=True, port = 8051)
