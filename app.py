@@ -1030,6 +1030,8 @@ def update_output(n_clicks, ticker, days, rs):
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
+                if column in ['RSI', 'Close Price']:
+                    continue
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
                     'if': {'filter_query': strin + ' > 0', 'column_id': column},
