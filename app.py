@@ -691,54 +691,62 @@ app.layout = html.Div([
             html.Div(id = 'rsi-output-table', style = {'margin-top':'20px'}),
         ]), 
         dcc.Tab(label='JPM Index Data Filter', children=[
-                html.H1("JPM Index Data Filter"),
+            html.H1("JPM Index Data Filter"),
 
-                # Dropdown for selecting 'idx_nm', options sorted alphabetically
-                dcc.Dropdown(
-                    id='idx_nm-dropdown',
-                    options=[{'label': i, 'value': i} for i in sorted(fy['Index Name'].unique())],  # Sorted idx_nm options
-                    placeholder="Select an Index",
+            # Dropdown for selecting 'idx_nm', options sorted alphabetically
+            dcc.Dropdown(
+                id='idx_nm-dropdown',
+                options=[{'label': i, 'value': i} for i in sorted(fy['Index Name'].unique())],  # Sorted idx_nm options
+                placeholder="Select an Index",
+                style={'width': '50%', 'margin-top': '20px'}
+            ),
+
+            # Dropdown for selecting 'idx_chg', dynamically populated
+            dcc.Dropdown(
+                id='idx_chg-dropdown',
+                placeholder="Select a Change",
+                style={'width': '50%', 'margin-top': '20px'}
+            ),
+
+            # Input for net_adv filter
+            # Dropdown for Completed/Expected filter
+            dcc.Dropdown(
+                    id='ecm-dropdown',
+                    options=[{'label': i, 'value': i} for i in ['Completed only', 'Expected only', 'Both']],
+                    placeholder='Completed/Expected Filter',
                     style={'width': '50%', 'margin-top': '20px'}
-                ),
-                
-                # Dropdown for selecting 'idx_chg', dynamically populated
-                dcc.Dropdown(
-                    id='idx_chg-dropdown',
-                    placeholder="Select a Change",
-                    style={'width': '50%', 'margin-top': '20px'}
-                ),
-                
-                # Input for net_adv filter
-                html.Div([
-                    html.Label('Filter by net_adv:', style={'font-size': '12px', 'margin-right': '10px'}),
-                    dcc.Input(
-                        id='net_adv-input',
-                        type='number',
-                        placeholder='Default: 0',
-                        value=0,
-                        style={'width': '100px', 'height': '20px'}
-                    )
-                ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
-                
-                # Input for net_val_M filter
-                html.Div([
-                    html.Label('Filter by net_val_M:', style={'font-size': '12px', 'margin-right': '10px'}),
-                    dcc.Input(
-                        id='net_val_M-input',
-                        type='number',
-                        placeholder='Default: 0',
-                        value=0,
-                        style={'width': '100px', 'height': '20px'}
-                    )
-                ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
-                
-                # Button to submit the filter request
-                html.Button('Get Results', id='filter-button', n_clicks=0, style={'margin-top': '20px'}),
-                
-                # Div to show the filtered results
-                html.Div(id='filtered-data', style={'margin-top': '20px'})
-            ]),
+            ),
+            html.Div([
+                html.Label('Filter by net_adv:', style={'font-size': '12px', 'margin-right': '10px'}),
+                dcc.Input(
+                    id='net_adv-input',
+                    type='number',
+                    placeholder='Default: 0',
+                    value=0,
+                    style={'width': '100px', 'height': '20px'}
+                )
+            ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
+
+            # Input for net_val_M filter
+            html.Div([
+                html.Label('Filter by net_val_M:', style={'font-size': '12px', 'margin-right': '10px'}),
+                dcc.Input(
+                    id='net_val_M-input',
+                    type='number',
+                    placeholder='Default: 0',
+                    value=0,
+                    style={'width': '100px', 'height': '20px'}
+                )
+            ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
+
+
+            # Button to submit the filter request
+            html.Button('Get Results', id='filter-button', n_clicks=0, style={'margin-top': '20px'}),
+
+            # Div to show the filtered results
+            html.Div(id='filtered-data', style={'margin-top': '20px'})
         ])
+    ])
 ])
 
 
@@ -1127,34 +1135,47 @@ def set_idx_chg_options(selected_idx_nm):
     State('idx_nm-dropdown', 'value'),
     State('idx_chg-dropdown', 'value'),
     State('net_adv-input', 'value'),
-    State('net_val_M-input', 'value')
+    State('net_val_M-input', 'value'),
+    State('ecm-dropdown', 'value')
 )
-def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value):
+def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value, ecm_value):
     if n_clicks > 0:
         # Filter the dataframe based on selected values
         filtered_df = fy.copy()
-        
+
+        # Filter by 'idx_nm'
         if selected_idx_nm:
             filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
+
+        # Filter by 'idx_chg'
         if selected_idx_chg:
             filtered_df = filtered_df[filtered_df['Index Change'] == selected_idx_chg]
 
-        # Filter based on net_adv
+        # Filter by net_adv
         if net_adv_value != 0:
             if net_adv_value > 0:
                 filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value]
             else:
                 filtered_df = filtered_df[filtered_df['Net ADV'] <= net_adv_value]
-        
-        # Filter based on net_val_M
+
+        # Filter by net_val_M
         if net_val_M_value != 0:
             if net_val_M_value > 0:
                 filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value]
             else:
                 filtered_df = filtered_df[filtered_df['Net Value (mm)'] <= net_val_M_value]
-        filtered_df = filtered_df.iloc[::-1]
+
+        # Filter by Completed/Expected status
+        if ecm_value == 'Completed only':
+            filtered_df = filtered_df[filtered_df['Status'] == 'C']
+        elif ecm_value == 'Expected only':
+            filtered_df = filtered_df[filtered_df['Status'] == 'E']
+        elif ecm_value == 'Both':
+            filtered_df = filtered_df[filtered_df['Status'].isin(['C', 'E'])]
+
         # Display the filtered DataFrame as an HTML table
         if not filtered_df.empty:
+            filtered_df = filtered_df.sort_values('Effective', ascending = False)
             return dash_table.DataTable(
                 data=filtered_df.to_dict('records'),
                 columns=[{'name': col, 'id': col} for col in filtered_df.columns],
@@ -1163,6 +1184,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
         else:
             return html.P("No matching data found.")
     return None
+
 
 
 if __name__ == '__main__':
