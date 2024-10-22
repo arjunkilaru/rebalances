@@ -28,6 +28,8 @@ api_key3 = 'PKVTHPR9MG1N0OU7NADW'
 api_secret3 = 'xR6Wsy8ZBEOMEq3Fb7DEwTVHva4pFsXzwMGzd3Du'
 base_url = 'https://paper-api.alpaca.markets'
 api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
+fy = pd.read_excel("JPMR_INDEX_REBAL_DAILY_5Y_History.xlsx")
+fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
 
 data = pd.read_excel('all_adr_data.xlsx')
 
@@ -579,113 +581,167 @@ server = app.server
 
 # Create input components
 app.layout = html.Div([
-    html.H1("Arjun Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
-    html.H2("ADR Lookback"),
-    html.P("Visualize returns of ADR->ORD conversion trades for specific pairs and premium/discount levels"), 
-    html.P("Prem/Disc is taken from snapshot around 3pm. Return is of 2hr twap in ORD Country out of right way position."),
-    dcc.Input(id='ticker-input', placeholder='Enter ADR symbol (i.e. BABA)', type='text', style={'margin': '10px', 'width': '20%'}),
-    dcc.Dropdown(id='disc-flag-input', options=[
-        {'label': 'Discount', 'value': 'discount'},
-        {'label': 'Premium', 'value': 'premium'}
-    ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='amt-input', placeholder='% Disc/Prem (abs value). (0 for no filter)', type='number', style={'margin': '10px', 'width': '27.6%'}),
-    html.Div([
-        dcc.DatePickerSingle(
-            id='start-date-picker',
-            placeholder='Start Date',
-            style={'margin': '10px', 'width': '100px'},  # Adjusted width
-        ),
-        dcc.DatePickerSingle(
-            id='end-date-picker',
-            placeholder='End Date',
-            date=datetime.today().strftime('%Y-%m-%d'),  # Default to today's date
-            style={'margin': '10px', 'width': '100px'},  # Adjusted width
-        )
-    ]),
-    dbc.Button('Submit', id='enter-button', color = 'primary', n_clicks=0),
-    html.Div(id='result-table', style={'margin-top': '20px'}),
-    html.Hr(),
-    html.H2("Off Open Return - Close to Open Gap Up"),
-    html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
-    dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
-    dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
-    dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    html.Br(),
-    dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
-    dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
-    html.Div(id='output-table', style={'margin-top': '20px'}),
-    dcc.Download(id="download-dataframe2-xlsx"),
-    html.Hr(),
-    html.H2("Overnight Return - Previous Close-Close Move"),
-    html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
-    html.P("You can also visualize returns relative to another stock. I.e. entering QQQ/IWM will display QQQ returns relative to IWM."),
-    dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
-    dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
-    dcc.Dropdown(id='weekday-filter-dropdown', options=[
-    {'label': 'No Weekday Filter', 'value': 'No Weekday Filter'},
-    {'label': 'Monday', 'value': 'Monday'},
-    {'label': 'Tuesday', 'value': 'Tuesday'},
-    {'label': 'Wednesday', 'value': 'Wednesday'},
-    {'label': 'Thursday', 'value': 'Thursday'},
-    {'label': 'Friday', 'value': 'Friday'},
-        ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
-    dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    dcc.Input(id='input-updown', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
-    dcc.Dropdown(id='offopen-dropdown', options=[
-    {'label': 'No Off Open Returns', 'value': 'No Off Open Returns'},
-    {'label': 'Yes Off Open Returns', 'value': 'Yes Off-Open Returns'},
-        ], value = 'No Off Open Returns', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
-    dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
-    dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
-    html.Div(id='doutput-table', style={'margin-top': '20px'}),
-    dcc.Download(id="download-dataframe3-xlsx"),
-    html.Hr(),
-    html.H2("Intraday Return Visualizer"),
-    html.P("Visualize returns to the close when a stock makes a specific intraday move."), 
-    html.Div([
-        html.P([
-            dcc.Input(id='intraday-ticker', type='text', placeholder='Enter ticker, e.g., AAPL', style={'width': '15%', 'display': 'inline-block', 'margin-right': '5px'}),
-            html.Span(" has moved ", style={'margin-right': '5px'}),
-            dcc.Input(id='intraday-amount', type='number', placeholder='Percent Move', style={'width': '12%', 'display': 'inline-block', 'margin-right': '5px'}),
-            html.Span(" % from the ", style={'margin-right': '5px'}),
-            dcc.Dropdown(id='intraday-froms', options=[
-                {'label': 'Open', 'value': 'open'},
-                {'label': 'Previous Close', 'value': 'close'}
-            ], placeholder='Select Open or Close', style={'width': '41%', 'display': 'inline-block', 'margin-right': '5px'})
-        ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'}),
-        html.P([
-            html.Span(" at ", style={'margin-right': '5px'}),
-            dcc.Dropdown(id='intraday-times', options=[
-                {'label': f'{hour:02d}:{minute:02d}', 'value': f'{hour:02d}:{minute:02d}'}
-                for hour in range(9, 17) for minute in range(0, 60, 15)
-                if not (hour == 16 and minute > 0)
+    dcc.Tabs([
+        dcc.Tab(label = 'ADR, Off-Open, Intraday Lookback', children = [
+            html.H1("Arjun Dashboard", style={'text-align': 'center', 'margin-bottom': '20px'}),
+            html.H2("ADR Lookback"),
+            html.P("Visualize returns of ADR->ORD conversion trades for specific pairs and premium/discount levels"), 
+            html.P("Prem/Disc is taken from snapshot around 3pm. Return is of 2hr twap in ORD Country out of right way position."),
+            dcc.Input(id='ticker-input', placeholder='Enter ADR symbol (i.e. BABA)', type='text', style={'margin': '10px', 'width': '20%'}),
+            dcc.Dropdown(id='disc-flag-input', options=[
+                {'label': 'Discount', 'value': 'discount'},
+                {'label': 'Premium', 'value': 'premium'}
+            ], placeholder='Select discount or premium', style={'margin': '10px', 'width': '50%'}),
+            dcc.Input(id='amt-input', placeholder='% Disc/Prem (abs value). (0 for no filter)', type='number', style={'margin': '10px', 'width': '27.6%'}),
+            html.Div([
+                dcc.DatePickerSingle(
+                    id='start-date-picker',
+                    placeholder='Start Date',
+                    style={'margin': '10px', 'width': '100px'},  # Adjusted width
+                ),
+                dcc.DatePickerSingle(
+                    id='end-date-picker',
+                    placeholder='End Date',
+                    date=datetime.today().strftime('%Y-%m-%d'),  # Default to today's date
+                    style={'margin': '10px', 'width': '100px'},  # Adjusted width
+                )
+            ]),
+            dbc.Button('Submit', id='enter-button', color = 'primary', n_clicks=0),
+            html.Div(id='result-table', style={'margin-top': '20px'}),
+            html.Hr(),
+            html.H2("Off Open Return - Close to Open Gap Up"),
+            html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
+            dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
+            dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
+            dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+            dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+            html.Br(),
+            dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
+            dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
+            html.Div(id='output-table', style={'margin-top': '20px'}),
+            dcc.Download(id="download-dataframe2-xlsx"),
+            html.Hr(),
+            html.H2("Overnight Return - Previous Close-Close Move"),
+            html.P("Visualize returns off the open from when a stock has a significant close-close move the previous day:"),
+            html.P("You can also visualize returns relative to another stock. I.e. entering QQQ/IWM will display QQQ returns relative to IWM."),
+            dbc.Input(id='input-tickers', type='text', placeholder='Enter ticker, e.g., TSLA'),
+            dbc.Input(id='input-amounts', type='number', placeholder='Enter percent move observed yesterday, e.g., 6'),
+            dcc.Dropdown(id='weekday-filter-dropdown', options=[
+            {'label': 'No Weekday Filter', 'value': 'No Weekday Filter'},
+            {'label': 'Monday', 'value': 'Monday'},
+            {'label': 'Tuesday', 'value': 'Tuesday'},
+            {'label': 'Wednesday', 'value': 'Wednesday'},
+            {'label': 'Thursday', 'value': 'Thursday'},
+            {'label': 'Friday', 'value': 'Friday'},
+                ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
+            dcc.Input(id='input-high', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+            dcc.Input(id='input-updown', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
+            dcc.Dropdown(id='offopen-dropdown', options=[
+            {'label': 'No Off Open Returns', 'value': 'No Off Open Returns'},
+            {'label': 'Yes Off Open Returns', 'value': 'Yes Off-Open Returns'},
+                ], value = 'No Off Open Returns', placeholder='View Off-Open Returns', style={'margin': '10px', 'width': '50%'}),
+            dbc.Button('Submit', id='submit-buttons', color='primary', n_clicks=0),
+            dbc.Button("Download as Excel", id="download-button2", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
+            html.Div(id='doutput-table', style={'margin-top': '20px'}),
+            dcc.Download(id="download-dataframe3-xlsx"),
+            html.Hr(),
+            html.H2("Intraday Return Visualizer"),
+            html.P("Visualize returns to the close when a stock makes a specific intraday move."), 
+            html.Div([
+                html.P([
+                    dcc.Input(id='intraday-ticker', type='text', placeholder='Enter ticker, e.g., AAPL', style={'width': '15%', 'display': 'inline-block', 'margin-right': '5px'}),
+                    html.Span(" has moved ", style={'margin-right': '5px'}),
+                    dcc.Input(id='intraday-amount', type='number', placeholder='Percent Move', style={'width': '12%', 'display': 'inline-block', 'margin-right': '5px'}),
+                    html.Span(" % from the ", style={'margin-right': '5px'}),
+                    dcc.Dropdown(id='intraday-froms', options=[
+                        {'label': 'Open', 'value': 'open'},
+                        {'label': 'Previous Close', 'value': 'close'}
+                    ], placeholder='Select Open or Close', style={'width': '41%', 'display': 'inline-block', 'margin-right': '5px'})
+                ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'}),
+                html.P([
+                    html.Span(" at ", style={'margin-right': '5px'}),
+                    dcc.Dropdown(id='intraday-times', options=[
+                        {'label': f'{hour:02d}:{minute:02d}', 'value': f'{hour:02d}:{minute:02d}'}
+                        for hour in range(9, 17) for minute in range(0, 60, 15)
+                        if not (hour == 16 and minute > 0)
 
-            ], placeholder='Select Time', style={'width': '40%', 'display': 'inline-block', 'margin-right': '5px'}),
-            html.Span(".")
-        ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'})
-    ]),
-    dbc.Button('Submit', id='intraday-submit', color='primary', n_clicks=0, style={'margin-top': '10px'}),
-    dbc.Button("Download as Excel", id="download-button3", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
-    html.Div(id='intraday-output-table', style={'margin-top': '20px'}),
-    dcc.Download(id="download-dataframe4-xlsx"),
-    html.Hr(),
-    html.H2("Earnings Long-Term Return Visualizer"),
-    html.P("Visualize returns up to 3 months after a specific earnings move."), 
-    dbc.Input(id='input-tickerss', type='text', placeholder='Enter ticker, e.g., TSLA'),
-    dbc.Input(id='input-amountss', type='number', placeholder='Enter close-close earnings move'),
-    dbc.Button('Submit', id='submit-buttonss', color='primary', n_clicks=0),
-    html.Div(id='earn-output-table', style={'margin-top': '20px'}),
-    html.Hr(),
-    html.H2("RSI Backtest Visualizer"),
-    html.P("Visualize short term and long term moves corresponding to specific RSI levels"),
-    html.P("NOTE: Positive RSI input shows days with >= RSI. Negative RSI input shows days with <= RSI"),
-    dbc.Input(id = 'input-tickerrsi', type = 'text', placeholder = 'Enter ticker, e.g., AMD'),
-    dbc.Input(id = 'input-days', type = 'number', placeholder = 'Enter No. Day RSI used for calculation, e.g., 14'),
-    dbc.Input(id = 'input-rsi', type = 'number', placeholder = 'Enter RSI used for filtering. Negative number = upper bound, Positive number = lower bound.'),
-    dbc.Button('Submit', id = 'submit-rsi', color = 'primary', n_clicks = 0),
-    html.Div(id = 'rsi-output-table', style = {'margin-top':'20px'}),
+                    ], placeholder='Select Time', style={'width': '40%', 'display': 'inline-block', 'margin-right': '5px'}),
+                    html.Span(".")
+                ], style={'display': 'flex', 'align-items': 'center', 'flex-wrap': 'nowrap'})
+            ]),
+            dbc.Button('Submit', id='intraday-submit', color='primary', n_clicks=0, style={'margin-top': '10px'}),
+            dbc.Button("Download as Excel", id="download-button3", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
+            html.Div(id='intraday-output-table', style={'margin-top': '20px'}),
+            dcc.Download(id="download-dataframe4-xlsx"),
+            html.Hr(),
+            html.H2("Earnings Long-Term Return Visualizer"),
+            html.P("Visualize returns up to 3 months after a specific earnings move."), 
+            dbc.Input(id='input-tickerss', type='text', placeholder='Enter ticker, e.g., TSLA'),
+            dbc.Input(id='input-amountss', type='number', placeholder='Enter close-close earnings move'),
+            dbc.Button('Submit', id='submit-buttonss', color='primary', n_clicks=0),
+            html.Div(id='earn-output-table', style={'margin-top': '20px'}),
+            html.Hr(),
+            html.H2("RSI Backtest Visualizer"),
+            html.P("Visualize short term and long term moves corresponding to specific RSI levels"),
+            html.P("NOTE: Positive RSI input shows days with >= RSI. Negative RSI input shows days with <= RSI"),
+            dbc.Input(id = 'input-tickerrsi', type = 'text', placeholder = 'Enter ticker, e.g., AMD'),
+            dbc.Input(id = 'input-days', type = 'number', placeholder = 'Enter No. Day RSI used for calculation, e.g., 14'),
+            dbc.Input(id = 'input-rsi', type = 'number', placeholder = 'Enter RSI used for filtering. Negative number = upper bound, Positive number = lower bound.'),
+            dbc.Button('Submit', id = 'submit-rsi', color = 'primary', n_clicks = 0),
+            html.Div(id = 'rsi-output-table', style = {'margin-top':'20px'}),
+        ]), 
+        dcc.Tab(label='JPM Index Data Filter', children=[
+                html.H1("JPM Index Data Filter"),
+
+                # Dropdown for selecting 'idx_nm', options sorted alphabetically
+                dcc.Dropdown(
+                    id='idx_nm-dropdown',
+                    options=[{'label': i, 'value': i} for i in sorted(fy['Index Name'].unique())],  # Sorted idx_nm options
+                    placeholder="Select an Index",
+                    style={'width': '50%', 'margin-top': '20px'}
+                ),
+                
+                # Dropdown for selecting 'idx_chg', dynamically populated
+                dcc.Dropdown(
+                    id='idx_chg-dropdown',
+                    placeholder="Select a Change",
+                    style={'width': '50%', 'margin-top': '20px'}
+                ),
+                
+                # Input for net_adv filter
+                html.Div([
+                    html.Label('Filter by net_adv:', style={'font-size': '12px', 'margin-right': '10px'}),
+                    dcc.Input(
+                        id='net_adv-input',
+                        type='number',
+                        placeholder='Default: 0',
+                        value=0,
+                        style={'width': '100px', 'height': '20px'}
+                    )
+                ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
+                
+                # Input for net_val_M filter
+                html.Div([
+                    html.Label('Filter by net_val_M:', style={'font-size': '12px', 'margin-right': '10px'}),
+                    dcc.Input(
+                        id='net_val_M-input',
+                        type='number',
+                        placeholder='Default: 0',
+                        value=0,
+                        style={'width': '100px', 'height': '20px'}
+                    )
+                ], style={'display': 'flex', 'align-items': 'center', 'margin-top': '20px'}),
+                
+                # Button to submit the filter request
+                html.Button('Get Results', id='filter-button', n_clicks=0, style={'margin-top': '20px'}),
+                
+                # Div to show the filtered results
+                html.Div(id='filtered-data', style={'margin-top': '20px'})
+            ]),
+        ])
 ])
+
+
 
 @app.callback(
     Output('result-table', 'children'),
@@ -1030,8 +1086,6 @@ def update_output(n_clicks, ticker, days, rs):
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['RSI', 'Close Price']:
-                    continue
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
                     'if': {'filter_query': strin + ' > 0', 'column_id': column},
@@ -1045,7 +1099,7 @@ def update_output(n_clicks, ticker, days, rs):
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in df.columns],
                 style_table={'overflowX': 'auto'},
-                page_size=8,
+                page_size=5,
                 style_cell={'minWidth': '180px', 'width': '180px', 'maxWidth': '180px'},
                 style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                 style_data_conditional=style_data_conditionals  # Apply color coding
@@ -1053,6 +1107,62 @@ def update_output(n_clicks, ticker, days, rs):
         except Exception as e:
             return html.Div(f"Error fetching data: {str(e)}")
     return html.Div("Submit a ticker and amount to see data.")
+@app.callback(
+    [Output('idx_chg-dropdown', 'options'),
+     Output('idx_chg-dropdown', 'value')],  # Also update the 'value' of the dropdown
+    Input('idx_nm-dropdown', 'value')
+)
+def set_idx_chg_options(selected_idx_nm):
+    if selected_idx_nm:
+        # Filter the DataFrame based on selected 'idx_nm' and return unique 'idx_chg' values
+        filtered_values = fy[fy['Index Name'] == selected_idx_nm]['Index Change'].dropna().unique()  # Drop NaN (null) values
+        return [{'label': i, 'value': i} for i in filtered_values if i is not None], None  # Ensure no None values
+    else:
+        return [], None
+
+# Callback to filter the dataframe based on user input from dropdowns and inputs
+@app.callback(
+    Output('filtered-data', 'children'),
+    Input('filter-button', 'n_clicks'),
+    State('idx_nm-dropdown', 'value'),
+    State('idx_chg-dropdown', 'value'),
+    State('net_adv-input', 'value'),
+    State('net_val_M-input', 'value')
+)
+def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value):
+    if n_clicks > 0:
+        # Filter the dataframe based on selected values
+        filtered_df = fy.copy()
+        
+        if selected_idx_nm:
+            filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
+        if selected_idx_chg:
+            filtered_df = filtered_df[filtered_df['Index Change'] == selected_idx_chg]
+
+        # Filter based on net_adv
+        if net_adv_value != 0:
+            if net_adv_value > 0:
+                filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value]
+            else:
+                filtered_df = filtered_df[filtered_df['Net ADV'] <= net_adv_value]
+        
+        # Filter based on net_val_M
+        if net_val_M_value != 0:
+            if net_val_M_value > 0:
+                filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value]
+            else:
+                filtered_df = filtered_df[filtered_df['Net Value (mm)'] <= net_val_M_value]
+        filtered_df = filtered_df.iloc[::-1]
+        # Display the filtered DataFrame as an HTML table
+        if not filtered_df.empty:
+            return dash_table.DataTable(
+                data=filtered_df.to_dict('records'),
+                columns=[{'name': col, 'id': col} for col in filtered_df.columns],
+                style_table={'overflowX': 'auto'}
+            )
+        else:
+            return html.P("No matching data found.")
+    return None
 
 
 if __name__ == '__main__':
