@@ -28,7 +28,10 @@ api_key3 = 'PKVTHPR9MG1N0OU7NADW'
 api_secret3 = 'xR6Wsy8ZBEOMEq3Fb7DEwTVHva4pFsXzwMGzd3Du'
 base_url = 'https://paper-api.alpaca.markets'
 api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
-fy = pd.read_excel("JPMR_INDEX_REBAL_DAILY_5Y_History.xlsx")
+fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx.xlsx")
+fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
+del fy['As_of_date']
+del fyu['As_of_date']
 fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
 
 data = pd.read_excel('all_adr_data.xlsx')
@@ -712,7 +715,7 @@ app.layout = html.Div([
             # Dropdown for Completed/Expected filter
             dcc.Dropdown(
                     id='ecm-dropdown',
-                    options=[{'label': i, 'value': i} for i in ['Completed only', 'Expected only', 'Both']],
+                    options=[{'label': i, 'value': i} for i in ['Completed only', 'Upcoming only', 'Both']],
                     placeholder='Completed/Expected Filter',
                     style={'width': '50%', 'margin-top': '20px'}
             ),
@@ -1140,9 +1143,19 @@ def set_idx_chg_options(selected_idx_nm):
 )
 def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value, ecm_value):
     if n_clicks > 0:
-        # Filter the dataframe based on selected values
-        filtered_df = fy.copy()
+        if ecm_value == 'Completed only':
+            common_rows = fy.merge(fyu, on=list(fy.columns), how='inner')
 
+            # Step 2: Drop the common rows from fy
+            fy_filtered = fy[~fy.index.isin(common_rows.index)]
+            filtered_df = fy_filtered.copy()
+            
+        elif ecm_value == 'Upcoming only':
+            filtered_df = fyu.copy()
+        elif ecm_value == 'Both':
+            filtered_df = fy.copy()
+        else:
+            filtered_df = fy.copy()
         # Filter by 'idx_nm'
         if selected_idx_nm:
             filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
@@ -1166,12 +1179,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
                 filtered_df = filtered_df[filtered_df['Net Value (mm)'] <= net_val_M_value]
 
         # Filter by Completed/Expected status
-        if ecm_value == 'Completed only':
-            filtered_df = filtered_df[filtered_df['Status'] == 'C']
-        elif ecm_value == 'Expected only':
-            filtered_df = filtered_df[filtered_df['Status'] == 'E']
-        elif ecm_value == 'Both':
-            filtered_df = filtered_df[filtered_df['Status'].isin(['C', 'E'])]
+
 
         # Display the filtered DataFrame as an HTML table
         if not filtered_df.empty:
