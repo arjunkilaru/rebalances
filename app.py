@@ -1178,6 +1178,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             filtered_df = filtered_df.sort_values('Effective', ascending = False)
             return dash_table.DataTable(
                 data=filtered_df.to_dict('records'),
+                sort_action = 'native',
                 columns=[{'name': col, 'id': col} for col in filtered_df.columns],
                 style_table={'overflowX': 'auto'}
             )
