@@ -33,6 +33,7 @@ fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
 del fy['As_of_date']
 del fyu['As_of_date']
 fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
+fyu.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
 
 data = pd.read_excel('all_adr_data.xlsx')
 
@@ -716,7 +717,7 @@ app.layout = html.Div([
             dcc.Dropdown(
                     id='ecm-dropdown',
                     options=[{'label': i, 'value': i} for i in ['Completed only', 'Upcoming only', 'Both']],
-                    placeholder='Completed/Expected Filter',
+                    placeholder='Completed/Upcoming Filter',
                     style={'width': '50%', 'margin-top': '20px'}
             ),
             html.Div([
