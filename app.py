@@ -717,7 +717,7 @@ app.layout = html.Div([
             dcc.Dropdown(
                     id='ecm-dropdown',
                     options=[{'label': i, 'value': i} for i in ['Completed only', 'Upcoming only', 'Both']],
-                    placeholder='Completed/Upcoming Filter',
+                    placeholder='Completed/Expected Filter',
                     style={'width': '50%', 'margin-top': '20px'}
             ),
             html.Div([
@@ -746,9 +746,11 @@ app.layout = html.Div([
 
             # Button to submit the filter request
             html.Button('Get Results', id='filter-button', n_clicks=0, style={'margin-top': '20px'}),
-
+            dbc.Button("Download as Excel", id="download-button9", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
             # Div to show the filtered results
-            html.Div(id='filtered-data', style={'margin-top': '20px'})
+            html.Div(id='filtered-data', style={'margin-top': '20px'}),
+            dcc.Download(id="download-dataframe5-xlsx"),
+
         ])
     ])
 ])
@@ -1195,6 +1197,48 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             return html.P("No matching data found.")
     return None
 
+@app.callback(
+    Output('download-dataframe5-xlsx', 'data'),
+    [Input('download-button9', 'n_clicks')],
+    [State('idx_nm-dropdown', 'value'),
+     State('idx_chg-dropdown', 'value'),
+     State('net_adv-input', 'value'),
+     State('net_val_M-input', 'value'),
+     State('ecm-dropdown', 'value')]
+)
+def generate_excel(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value, ecm_value):
+    if n_clicks > 0:
+        # Initialize filtered DataFrame based on ECM value
+        if ecm_value == 'Completed only':
+            common_rows = fy.merge(fyu, on=list(fy.columns), how='inner')
+            fy_filtered = fy[~fy.index.isin(common_rows.index)]
+            filtered_df = fy_filtered.copy()
+        elif ecm_value == 'Upcoming only':
+            filtered_df = fyu.copy()
+        elif ecm_value == 'Both':
+            filtered_df = fy.copy()
+        else:
+            filtered_df = fy.copy()
+
+        # Apply filters
+        if selected_idx_nm:
+            filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
+        if selected_idx_chg:
+            filtered_df = filtered_df[filtered_df['Index Change'] == selected_idx_chg]
+        if net_adv_value != 0:
+            filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value if net_adv_value > 0 else filtered_df['Net ADV'] <= net_adv_value]
+        if net_val_M_value != 0:
+            filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value if net_val_M_value > 0 else filtered_df['Net Value (mm)'] <= net_val_M_value]
+
+        # Export to Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            filtered_df.to_excel(writer, index=False, sheet_name='Sheet1')
+            writer.close()
+        xlsx_data = output.getvalue()
+
+        return dcc.send_bytes(xlsx_data, "output.xlsx")
+    return None
 
 
 if __name__ == '__main__':
