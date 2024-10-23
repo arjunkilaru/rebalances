@@ -28,7 +28,7 @@ api_key3 = 'PKVTHPR9MG1N0OU7NADW'
 api_secret3 = 'xR6Wsy8ZBEOMEq3Fb7DEwTVHva4pFsXzwMGzd3Du'
 base_url = 'https://paper-api.alpaca.markets'
 api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
-fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx.xlsx")
+fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx")
 fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
 del fy['As_of_date']
 del fyu['As_of_date']
