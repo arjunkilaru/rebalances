@@ -1159,6 +1159,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             filtered_df = fy.copy()
         else:
             filtered_df = fy.copy()
+
         # Filter by 'idx_nm'
         if selected_idx_nm:
             filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
@@ -1181,21 +1182,41 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             else:
                 filtered_df = filtered_df[filtered_df['Net Value (mm)'] <= net_val_M_value]
 
-        # Filter by Completed/Expected status
+        # Format columns to two decimal places
+        for col in ['Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV']:
+            filtered_df[col] = filtered_df[col].round(2)
 
-
+        # Format 'Effective' and 'Announcement Date' columns
+        filtered_df['Effective'] = pd.to_datetime(filtered_df['Effective']).dt.strftime('%Y-%m-%d')
+        filtered_df['Announcement Date'] = pd.to_datetime(filtered_df['Announcement Date']).dt.strftime('%Y-%m-%d')
+        cols = filtered_df.columns.tolist()
+        cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
+        filtered_df = filtered_df[cols]
         # Display the filtered DataFrame as an HTML table
         if not filtered_df.empty:
-            filtered_df = filtered_df.sort_values('Effective', ascending = False)
+            filtered_df = filtered_df.sort_values('Effective', ascending=False)
             return dash_table.DataTable(
                 data=filtered_df.to_dict('records'),
-                sort_action = 'native',
+                sort_action='native',
                 columns=[{'name': col, 'id': col} for col in filtered_df.columns],
-                style_table={'overflowX': 'auto'}
+                style_table={'overflowX': 'auto'},
+                style_header={
+                    'fontWeight': 'bold',  # Bold header
+                    'backgroundColor': '#F9F9F9',  # Light grey header background
+                    'textAlign': 'center'  # Center-align header text
+                },
+                # Conditionally style headers for specific columns
+                style_header_conditional=[
+                    {
+                        'if': {'column_id': col},
+                        'backgroundColor': '#FFFF00'
+                    } for col in ['Net Value (mm)', 'Net Shares (mm)', 'Net ADV']
+                ],
             )
         else:
             return html.P("No matching data found.")
     return None
+
 
 @app.callback(
     Output('download-dataframe5-xlsx', 'data'),
