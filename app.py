@@ -406,8 +406,16 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
     start = td - timedelta(days = 365*8)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
+        df['1 Day Return'] = round(100*(df['adjClose'].shift(-1) - df['adjClose']) / df['adjClose'].shift(-1),3)
+        df['3 Day Return'] = round(100*(df['adjClose'].shift(-3) - df['adjClose']) / df['adjClose'].shift(-3),3)
+        df['5 Day Return'] = round(100*(df['adjClose'].shift(-5) - df['adjClose']) / df['adjClose'].shift(-5),3)
+        df['10 Day Return'] = round(100*(df['adjClose'].shift(-10) - df['adjClose']) / df['adjClose'].shift(-10),3)
         if two:
             one = client.get_dataframe(back, frequency='Daily', startDate= start, endDate= td - BDay(1))
+            one['1 Day Return'] = round(100*(one['adjClose'].shift(-1) - one['adjClose']) / one['adjClose'].shift(-1),3)
+            one['3 Day Return'] = round(100*(one['adjClose'].shift(-3) - one['adjClose']) / one['adjClose'].shift(-3),3)
+            one['5 Day Return'] = round(100*(one['adjClose'].shift(-5) - one['adjClose']) / one['adjClose'].shift(-5),3)
+            one['10 Day Return'] = round(100*(one['adjClose'].shift(-10) - one['adjClose']) / one['adjClose'].shift(-10),3)
     except Exception as e:
         print(e)
         return pd.DataFrame()
@@ -444,7 +452,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
         one['Prev Close to Close'] = round(100 * one['adjClose'].pct_change(),3)
         one['Close to Open'] = round(100*(one['adjOpen'].shift(-1) - one['adjClose'])/one['adjClose'],3)
         one['Open to Close'] = round(((one['adjClose'] - one['adjOpen']) / one['adjOpen'] * 100).shift(-1),3)
-        for col in ['Prev Close to Close', 'Close to Open', 'Open to Close']:
+        for col in ['Prev Close to Close', 'Close to Open', 'Open to Close', '1 Day Return', '3 Day Return', '5 Day Return', '10 Day Return']:
             df[col] = round(df[col] - one[col],3)
     
     if not two:
@@ -551,7 +559,7 @@ def get_everything2(ticker, amount, weekday = "No Weekday Filter", dailyhigh = 0
 
     else:
         df = df.iloc[::-1]
-        return df[['date', 'Prev Close to Close', 'Close to Open', 'Open to Close', '# Day High', 'All Time High' ,'Consecutive Up/Down Days','Prev Day Earnings', 'Weekday']]
+        return df[['date', 'Prev Close to Close', 'Close to Open', 'Open to Close', '1 Day Return', '3 Day Return', '5 Day Return', '10 Day Return', '# Day High', 'All Time High' ,'Consecutive Up/Down Days','Prev Day Earnings', 'Weekday']]
 
 import dash
 from dash import dcc
@@ -1144,6 +1152,7 @@ def set_idx_chg_options(selected_idx_nm):
     State('net_val_M-input', 'value'),
     State('ecm-dropdown', 'value')
 )
+
 def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value, ecm_value):
     if n_clicks > 0:
         if ecm_value == 'Completed only':
@@ -1218,8 +1227,6 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
         else:
             return html.P("No matching data found.")
     return None
-
-
 @app.callback(
     Output('download-dataframe5-xlsx', 'data'),
     [Input('download-button9', 'n_clicks')],
@@ -1252,13 +1259,6 @@ def generate_excel(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, n
             filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value if net_adv_value > 0 else filtered_df['Net ADV'] <= net_adv_value]
         if net_val_M_value != 0:
             filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value if net_val_M_value > 0 else filtered_df['Net Value (mm)'] <= net_val_M_value]
-        filtered_df['Effective'] = pd.to_datetime(filtered_df['Effective']).dt.strftime('%Y-%m-%d')
-        filtered_df['Announcement Date'] = pd.to_datetime(filtered_df['Announcement Date']).dt.strftime('%Y-%m-%d')
-        filtered_df = filtered_df.rename(columns = {'Weight Change': 'Weight Change (%)'})
-        filtered_df['Weight Change (%)'] = round(100*filtered_df['Weight Change (%)'], 3)
-        cols = filtered_df.columns.tolist()
-        cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
-        filtered_df = filtered_df[cols]
 
         # Export to Excel
         output = io.BytesIO()
