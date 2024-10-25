@@ -1189,6 +1189,8 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
         # Format 'Effective' and 'Announcement Date' columns
         filtered_df['Effective'] = pd.to_datetime(filtered_df['Effective']).dt.strftime('%Y-%m-%d')
         filtered_df['Announcement Date'] = pd.to_datetime(filtered_df['Announcement Date']).dt.strftime('%Y-%m-%d')
+        filtered_df = filtered_df.rename(columns = {'Weight Change': 'Weight Change (%)'})
+        filtered_df['Weight Change (%)'] = round(100*filtered_df['Weight Change (%)'], 3)
         cols = filtered_df.columns.tolist()
         cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
         filtered_df = filtered_df[cols]
@@ -1250,6 +1252,13 @@ def generate_excel(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, n
             filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value if net_adv_value > 0 else filtered_df['Net ADV'] <= net_adv_value]
         if net_val_M_value != 0:
             filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value if net_val_M_value > 0 else filtered_df['Net Value (mm)'] <= net_val_M_value]
+        filtered_df['Effective'] = pd.to_datetime(filtered_df['Effective']).dt.strftime('%Y-%m-%d')
+        filtered_df['Announcement Date'] = pd.to_datetime(filtered_df['Announcement Date']).dt.strftime('%Y-%m-%d')
+        filtered_df = filtered_df.rename(columns = {'Weight Change': 'Weight Change (%)'})
+        filtered_df['Weight Change (%)'] = round(100*filtered_df['Weight Change (%)'], 3)
+        cols = filtered_df.columns.tolist()
+        cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
+        filtered_df = filtered_df[cols]
 
         # Export to Excel
         output = io.BytesIO()
