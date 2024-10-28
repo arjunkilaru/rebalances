@@ -1250,16 +1250,39 @@ def generate_excel(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, n
         else:
             filtered_df = fy.copy()
 
-        # Apply filters
         if selected_idx_nm:
             filtered_df = filtered_df[filtered_df['Index Name'] == selected_idx_nm]
+
+        # Filter by 'idx_chg'
         if selected_idx_chg:
             filtered_df = filtered_df[filtered_df['Index Change'] == selected_idx_chg]
-        if net_adv_value != 0:
-            filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value if net_adv_value > 0 else filtered_df['Net ADV'] <= net_adv_value]
-        if net_val_M_value != 0:
-            filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value if net_val_M_value > 0 else filtered_df['Net Value (mm)'] <= net_val_M_value]
 
+        # Filter by net_adv
+        if net_adv_value != 0:
+            if net_adv_value > 0:
+                filtered_df = filtered_df[filtered_df['Net ADV'] >= net_adv_value]
+            else:
+                filtered_df = filtered_df[filtered_df['Net ADV'] <= net_adv_value]
+
+        # Filter by net_val_M
+        if net_val_M_value != 0:
+            if net_val_M_value > 0:
+                filtered_df = filtered_df[filtered_df['Net Value (mm)'] >= net_val_M_value]
+            else:
+                filtered_df = filtered_df[filtered_df['Net Value (mm)'] <= net_val_M_value]
+
+        # Format columns to two decimal places
+        for col in ['Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV']:
+            filtered_df[col] = filtered_df[col].round(2)
+
+        # Format 'Effective' and 'Announcement Date' columns
+        filtered_df['Effective'] = pd.to_datetime(filtered_df['Effective']).dt.strftime('%Y-%m-%d')
+        filtered_df['Announcement Date'] = pd.to_datetime(filtered_df['Announcement Date']).dt.strftime('%Y-%m-%d')
+        filtered_df = filtered_df.rename(columns = {'Weight Change': 'Weight Change (%)'})
+        filtered_df['Weight Change (%)'] = round(100*filtered_df['Weight Change (%)'], 3)
+        cols = filtered_df.columns.tolist()
+        cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
+        filtered_df = filtered_df[cols]
         # Export to Excel
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
