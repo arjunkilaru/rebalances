@@ -738,7 +738,7 @@ app.layout = html.Div([
             html.Div(id = 'rsi-output-table', style = {'margin-top':'20px'}),
         ]), 
         dcc.Tab(label='JPM Index Data Filter', children=[
-            html.H1("JPM Index Data Filter"),
+            html.H1("JPM Index Data Filter", style={'text-align': 'center', 'margin-bottom': '20px'}),
 
             # Dropdown for selecting 'idx_nm', options sorted alphabetically
             dcc.Dropdown(
