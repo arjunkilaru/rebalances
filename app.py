@@ -30,6 +30,41 @@ base_url = 'https://paper-api.alpaca.markets'
 api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
 fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx")
 fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
+
+# Define a function to assign values to the 'change' column
+
+# Define a function to assign values to the 'change' column
+def determine_change(row):
+    if row['Share_Inc'] == True and row['Float_Inc'] == True:
+        return 'S Inc & F Inc'
+    elif row['Spin_Off'] == True and row['Add'] == True:
+        return 'Spin Off Add'
+    elif row['Spin_Off'] == True and row['Delete'] == True:
+        return 'Spin Off Delete'
+    elif row['Spin_Off'] == True:
+        return 'Spin Off'
+    elif row['Add'] == True:
+        return 'Add'
+    elif row['Share_Dec'] == True and row['Float_Dec'] == True:
+        return 'S Dec & F Dec'
+    elif row['Delete'] == True:
+        return 'Delete'
+    elif row['Country_change'] == True:
+        return 'Country Change'
+    else:
+        return row['Change']  # Retain existing value if no conditions are met
+
+# Apply the function to each row to update the 'change' column
+fy['Change'] = fy.apply(determine_change, axis=1)
+fyu['Change'] = fy.apply(determine_change, axis=1)
+
+columns_to_drop = ['Share_Inc', 'Share_Dec', 'Float_Inc', 'Float_Dec', 'Add', 'Delete', 'Spin_Off', 'Country_change', 'Other']
+
+# Drop the columns
+fy.drop(columns=columns_to_drop, inplace=True)
+fyu.drop(columns=columns_to_drop, inplace=True)
+
+
 del fy['As_of_date']
 del fyu['As_of_date']
 fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
