@@ -51,8 +51,16 @@ def determine_change(row):
         return 'Delete'
     elif row['Country_change'] == True:
         return 'Country Change'
+    elif row['Share_Inc'] == True:
+        return 'S Inc'
+    elif row['Float_Inc'] == True:
+        return 'F Inc'
+    elif row['Share_Dec'] == True:
+        return 'S Dec'
+    elif row['F_Dec']:
+        return 'F Dec'
     else:
-        return row['Change']  # Retain existing value if no conditions are met
+        return row['Change']
 
 # Apply the function to each row to update the 'change' column
 fy['Change'] = fy.apply(determine_change, axis=1)
