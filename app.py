@@ -57,7 +57,7 @@ def determine_change(row):
         return 'F Inc'
     elif row['Share_Dec'] == True:
         return 'S Dec'
-    elif row['F_Dec']:
+    elif row['Float_Dec'] == True:
         return 'F Dec'
     else:
         return row['Change']
