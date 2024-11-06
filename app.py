@@ -1181,6 +1181,7 @@ def set_idx_chg_options(selected_idx_nm):
     if selected_idx_nm:
         # Filter the DataFrame based on selected 'idx_nm' and return unique 'idx_chg' values
         filtered_values = fy[fy['Index Name'] == selected_idx_nm]['Index Change'].dropna().unique()  # Drop NaN (null) values
+        filtered_values = sorted(filtered_values)
         return [{'label': i, 'value': i} for i in filtered_values if i is not None], None  # Ensure no None values
     else:
         return [], None
