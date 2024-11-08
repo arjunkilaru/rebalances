@@ -1208,6 +1208,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             
         elif ecm_value == 'Upcoming only':
             filtered_df = fyu.copy()
+            filtered_df = filtered_df.sort_values(by = 'Effective', ascending = True)
         elif ecm_value == 'Both':
             filtered_df = fy.copy()
         else:
@@ -1289,6 +1290,7 @@ def generate_excel(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, n
             filtered_df = fy_filtered.copy()
         elif ecm_value == 'Upcoming only':
             filtered_df = fyu.copy()
+            filtered_df = filtered_df.sort_values(by = 'Effective', ascending = True)
         elif ecm_value == 'Both':
             filtered_df = fy.copy()
         else:
