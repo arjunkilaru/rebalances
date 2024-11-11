@@ -29,6 +29,8 @@ api_secret3 = 'xR6Wsy8ZBEOMEq3Fb7DEwTVHva4pFsXzwMGzd3Du'
 base_url = 'https://paper-api.alpaca.markets'
 api3 = tradeapi.REST(api_key3, api_secret3, base_url, api_version='v2')
 fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx")
+prices = pd.read_excel('full_jpm_db_with_price_action.xlsx')
+fy = pd.merge(fy, prices, on = fy.columns.tolist(), how = 'outer')
 fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
 
 # Define a function to assign values to the 'change' column
@@ -75,9 +77,13 @@ fyu.drop(columns=columns_to_drop, inplace=True)
 
 del fy['As_of_date']
 del fyu['As_of_date']
-fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
-fyu.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details']
 
+for col in ["prev_close_to_close", "open_to_close", "close_to_next_open", "next_open_to_next_close", "annc_close_to_eff_close", "annc_close_to_next_open", "annc_next_open_to_next_close"]:
+    fy[col] = round(100*fy[col],3)
+    fyu[col]= np.nan
+
+fy.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details', 'Prev Close to Effective Close', 'Effective Open to Close', 'Effective Close to Next Open', 'Effective T+1 Open to Close', 'Annc Close to Eff. Close', 'Annc Close to Next Open', 'Annc T+1 Open to Close']
+fyu.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name', 'Index Change', 'Weight Change', 'Value (mm)', 'Shares (mm)', 'ADV', 'Net Value (mm)', 'Net Shares (mm)', 'Net ADV', 'Announcement Date', 'Details', 'Prev Close to Effective Close', 'Effective Open to Close', 'Effective Close to Next Open', 'Effective T+1 Open to Close', 'Annc Close to Eff. Close', 'Annc Close to Next Open', 'Annc T+1 Open to Close']
 data = pd.read_excel('all_adr_data.xlsx')
 
 def rsi(ticker, days, rs):
@@ -1199,6 +1205,7 @@ def set_idx_chg_options(selected_idx_nm):
 
 def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value, net_val_M_value, ecm_value):
     if n_clicks > 0:
+        noup = True
         if ecm_value == 'Completed only':
             common_rows = fy.merge(fyu, on=list(fy.columns), how='inner')
 
@@ -1208,6 +1215,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
             
         elif ecm_value == 'Upcoming only':
             filtered_df = fyu.copy()
+            npup = False
             filtered_df = filtered_df.sort_values(by = 'Effective', ascending = True)
         elif ecm_value == 'Both':
             filtered_df = fy.copy()
@@ -1249,6 +1257,20 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
         cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
         filtered_df = filtered_df[cols]
         # Display the filtered DataFrame as an HTML table
+    
+        style_data_conditionals = []
+        if noup:
+            for column in ['Prev Close to Effective Close', 'Effective Open to Close', 'Effective Close to Next Open', 'Effective T+1 Open to Close', 'Annc Close to Eff. Close', 'Annc Close to Next Open', 'Annc T+1 Open to Close']:
+                strin = "{" + column + "}"
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' > 0', 'column_id': column},
+                    'backgroundColor': '#228C22', 'color':'white'
+                })
+                style_data_conditionals.append({
+                    'if': {'filter_query': strin + ' < 0', 'column_id': column},
+                    'backgroundColor': '#FF6666', 'color':'white'
+                })
+
         if not filtered_df.empty:
             filtered_df = filtered_df.sort_values('Effective', ascending=False)
             return dash_table.DataTable(
@@ -1261,6 +1283,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
                     'backgroundColor': '#F9F9F9',  # Light grey header background
                     'textAlign': 'center'  # Center-align header text
                 },
+                style_data_conditional=style_data_conditionals,
                 # Conditionally style headers for specific columns
                 style_header_conditional=[
                     {
