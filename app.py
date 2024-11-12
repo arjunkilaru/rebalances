@@ -66,7 +66,7 @@ def determine_change(row):
 
 # Apply the function to each row to update the 'change' column
 fy['Change'] = fy.apply(determine_change, axis=1)
-fyu['Change'] = fy.apply(determine_change, axis=1)
+fyu['Change'] = fyu.apply(determine_change, axis=1)
 
 columns_to_drop = ['Share_Inc', 'Share_Dec', 'Float_Inc', 'Float_Dec', 'Add', 'Delete', 'Spin_Off', 'Country_change', 'Other']
 
