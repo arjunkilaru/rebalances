@@ -206,17 +206,21 @@ def returns(ticker, amount, time_str, open = 'open'):
     if open.lower() == 'open':
         a = a[['intraday return fo', 'Return to 15 Min', 'return to close']]
         a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close']
-        if amount >= 0:
+        if amount > 0:
             a = a[a['Return from Open'] >= amount]
-        else:
+        elif amount < 0:
             a = a[a['Return from Open'] <= amount]
+        else:
+            a = a.head(20)
     else:
         a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
         a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close']
-        if amount >= 0:
+        if amount > 0:
             a = a[a['Return from Prev Close'] >= amount]
-        else:
+        elif amount <0:
             a = a[a['Return from Prev Close'] <= amount]
+        else:
+            a = a.head(20)
     a = a.reset_index()
     return a.iloc[::-1]
 
