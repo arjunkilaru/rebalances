@@ -1261,7 +1261,8 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
         cols.insert(cols.index('Effective') + 1, cols.pop(cols.index('Announcement Date')))
         filtered_df = filtered_df[cols]
         # Display the filtered DataFrame as an HTML table
-    
+        del filtered_df['Region']
+        
         style_data_conditionals = []
         if noup:
             for column in ['Prev Close to Effective Close', 'Effective Open to Close', 'Effective Close to Next Open', 'Effective T+1 Open to Close', 'Annc Close to Eff. Close', 'Annc Close to Next Open', 'Annc T+1 Open to Close']:
@@ -1282,6 +1283,7 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
                 sort_action='native',
                 columns=[{'name': col, 'id': col} for col in filtered_df.columns],
                 style_table={'overflowX': 'auto'},
+                fixed_columns={'headers': True, 'data': 1},
                 style_header={
                     'fontWeight': 'bold',  # Bold header
                     'backgroundColor': '#F9F9F9',  # Light grey header background
