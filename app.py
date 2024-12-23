@@ -1282,8 +1282,11 @@ def filter_dataframe(n_clicks, selected_idx_nm, selected_idx_chg, net_adv_value,
                 data=filtered_df.to_dict('records'),
                 sort_action='native',
                 columns=[{'name': col, 'id': col} for col in filtered_df.columns],
-                style_table={'overflowX': 'auto'},
-                fixed_columns={'headers': True, 'data': 1},
+                style_table={
+                    'overflowX': 'auto',
+                    'width': '100%',  # Ensuring the table uses the full width available
+                    'minWidth': '1000px',  # Minimum width of the table to ensure all columns are visible
+                },                fixed_columns={'headers': True, 'data': 1},
                 style_header={
                     'fontWeight': 'bold',  # Bold header
                     'backgroundColor': '#F9F9F9',  # Light grey header background
