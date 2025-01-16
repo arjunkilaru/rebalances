@@ -322,7 +322,7 @@ def get_earnings(ticker, amount):
     df = df.reset_index()
     return df
 
-def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
+def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter"):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
     try:
@@ -359,6 +359,11 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0):
     df['Price Change'] = df['Price Change'].apply(lambda x: 1 if x>0 else -1)
     df['Consecutive Up/Down Days'] = df['Price Change'].groupby((df['Price Change'] != df['Price Change'].shift()).cumsum()).cumsum()
     df['Consecutive Up/Down Days'] = df['Consecutive Up/Down Days'].shift(1)
+    df['date'] = df.index
+    df['Weekday'] = (pd.to_datetime(df['date'])).dt.day_name()
+    if weekday != 'No Weekday Filter':
+        df = df[df['Weekday'] == weekday]
+    del df['date']
     if consq is None:
         consq = 0
     if consq != 0:
@@ -681,6 +686,14 @@ app.layout = html.Div([
             dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
             dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
             html.Br(),
+            dcc.Dropdown(id='weekday2-filter-dropdown', options=[
+            {'label': 'No Weekday Filter', 'value': 'No Weekday Filter'},
+            {'label': 'Monday', 'value': 'Monday'},
+            {'label': 'Tuesday', 'value': 'Tuesday'},
+            {'label': 'Wednesday', 'value': 'Wednesday'},
+            {'label': 'Thursday', 'value': 'Thursday'},
+            {'label': 'Friday', 'value': 'Friday'},
+                ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
             dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
             dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
             html.Div(id='output-table', style={'margin-top': '20px'}),
@@ -901,17 +914,18 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
 Output('output-table', 'children'),
 [Input('submit-button', 'n_clicks')],
 [dash.dependencies.State('input-ticker', 'value'),
-    dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value'), dash.dependencies.State('input-ud', 'value')]
+dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value'), dash.dependencies.State('input-ud', 'value'),       State('weekday2-filter-dropdown', 'value')
+]
 )
-def update_output(n_clicks, ticker, amount, high1, ud):
+def update_output(n_clicks, ticker, amount, high1, ud, weekday2):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud)            
+            df = get_everything(ticker, amount, high1, ud, weekday2)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days']:
+                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days', "Weekday"]:
                     continue
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
@@ -944,13 +958,14 @@ def update_output(n_clicks, ticker, amount, high1, ud):
     Output('download-dataframe2-xlsx', 'data'),
     [Input('download-button', 'n_clicks')],
     [State('input-ticker', 'value'),
+     State('weekday2-filter-dropdown', 'value'),
      State('input-amount', 'value'), State('input-high1', 'value'), State('input-ud', 'value')]
 )
-def generate_excel(n_clicks, ticker, amount, high1, ud):
+def generate_excel(n_clicks, ticker, amount, high1, ud, weekday2):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud)
+            df = get_everything(ticker, amount, high1, ud, weekday2)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
