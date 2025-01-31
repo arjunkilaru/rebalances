@@ -322,7 +322,7 @@ def get_earnings(ticker, amount):
     df = df.reset_index()
     return df
 
-def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter"):
+def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
     try:
@@ -348,7 +348,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
         else:
             lows.append(-1* (i - numlow.index.tolist()[-1] - 1))
 
-
+    df['Prev Day Return'] = round(100*df['adjClose'].pct_change(),3).shift(1)
     df['# Day High'] = highs
     df['l'] = lows
     df['# Day High'] = df['# Day High'].replace(0,np.nan)
@@ -361,6 +361,10 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['Consecutive Up/Down Days'] = df['Consecutive Up/Down Days'].shift(1)
     df['date'] = df.index
     df['Weekday'] = (pd.to_datetime(df['date'])).dt.day_name()
+    if prevday > 0:
+        df = df[df['Prev Day Return'] >= prevday]
+    if prevday < 0:
+        df = df[df['Prev Day Return'] <= prevday]
     if weekday != 'No Weekday Filter':
         df = df[df['Weekday'] == weekday]
     del df['date']
@@ -436,7 +440,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['5 Min Return'] = [get_rets(df, 35) for df in all_dfs]
     df['10 Min Return'] = [get_rets(df, 40) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 45) for df in all_dfs]
-    df = df[['Close to Open', '9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days']]
+    df = df[['Close to Open', '9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days', 'Prev Day Return']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     try:
@@ -694,6 +698,7 @@ app.layout = html.Div([
             {'label': 'Thursday', 'value': 'Thursday'},
             {'label': 'Friday', 'value': 'Friday'},
                 ], value = 'No Weekday Filter', placeholder='Select Weekday Filter', style={'margin': '10px', 'width': '50%'}),
+            dcc.Input(id='input-pd', placeholder='Prev Day Return (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
             dbc.Button('Submit', id='submit-button', color='primary', n_clicks=0),
             dbc.Button("Download as Excel", id="download-button", n_clicks=0, style={'margin-left': '20px', 'font-size': '12px', 'padding': '5px 10px'}),
             html.Div(id='output-table', style={'margin-top': '20px'}),
@@ -914,23 +919,23 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
 Output('output-table', 'children'),
 [Input('submit-button', 'n_clicks')],
 [dash.dependencies.State('input-ticker', 'value'),
-dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value'), dash.dependencies.State('input-ud', 'value'),       State('weekday2-filter-dropdown', 'value')
+dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value'), dash.dependencies.State('input-ud', 'value'), State('weekday2-filter-dropdown', 'value'), State('input-pd', 'value')
 ]
 )
-def update_output(n_clicks, ticker, amount, high1, ud, weekday2):
+def update_output(n_clicks, ticker, amount, high1, ud, weekday2, pds):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud, weekday2)            
+            df = get_everything(ticker, amount, high1, ud, weekday2, pds)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days', "Weekday"]:
+                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days', "Weekday", "Prev Day Return"]:
                     continue
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['# Day High', 'Consecutive Up/Down Days']:
+                if column in ['# Day High', 'Consecutive Up/Down Days', "Prev Day Return"]:
                     continue
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
