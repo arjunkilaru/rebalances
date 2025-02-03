@@ -361,6 +361,8 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['Consecutive Up/Down Days'] = df['Consecutive Up/Down Days'].shift(1)
     df['date'] = df.index
     df['Weekday'] = (pd.to_datetime(df['date'])).dt.day_name()
+    if prevday is None:
+        prevday = 0
     if prevday > 0:
         df = df[df['Prev Day Return'] >= prevday]
     if prevday < 0:
