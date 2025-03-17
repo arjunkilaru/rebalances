@@ -32,6 +32,7 @@ fy = pd.read_excel("JPM_DAILY_EOD_REBAL_COMPLETE.xlsx")
 prices = pd.read_excel('full_jpm_db_with_price_action.xlsx')
 fy = pd.merge(fy, prices, on = fy.columns.tolist(), how = 'outer')
 fyu = pd.read_excel("JPM_UPCOMING_INDEX_EVENTS.xlsx")
+edf = pd.read_excel('All_earnings_31725.xlsx')
 
 # Define a function to assign values to the 'change' column
 
@@ -283,14 +284,13 @@ def get_earnings(ticker, amount):
         a = df
     except:
         return pd.DataFrame()
-    earnings_hist = pd.DataFrame(yf.Ticker(ticker).get_earnings_dates(limit = 40))
-    earnings_hist['Earnings Date'] = earnings_hist.index
+    earnings_hist = edf[edf['Unnamed: 0'] == ticker + ' US EQUITY']
+    earnings_hist['Earnings Date'] = pd.to_datetime(edf['announcement_date'])	
     earnings_hist_date = earnings_hist['Earnings Date'].dt.date
     df = df.reset_index()
     df['Prev Day Earnings'] = df['date'].apply(
     lambda date: "Yes" if (pd.to_datetime(date) - BDay(1)).date() in earnings_hist_date.values else "No"
 )
-
     df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
     df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(0),3)
     df = df[df['Prev Day Earnings'] == 'Yes']
@@ -313,6 +313,7 @@ def get_earnings(ticker, amount):
             return a1['adjClose'].iloc[0]
         else:
             return np.nan
+    display(df)
     df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
     df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
     df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
