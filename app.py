@@ -274,8 +274,6 @@ def show_all(ticker, data, disc, amt):
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
     
-import yfinance as yf
-
 def get_earnings(ticker, amount):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
@@ -313,15 +311,16 @@ def get_earnings(ticker, amount):
             return a1['adjClose'].iloc[0]
         else:
             return np.nan
-    df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['2 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['3 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['1 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose'],2)
+    df['2 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose'],2)
+    df['1 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose'],2)
+    df['2 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose'],2)
+    df['3 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose'],2)
     df.index = df.index.strftime("%Y-%m-%d")
+    df['adjClose'] = round(df['adjClose'],2)
     df = df.reset_index()
     return df
-
+    
 def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
