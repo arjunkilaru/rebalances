@@ -189,24 +189,28 @@ def returns(ticker, amount, time_str, open = 'open'):
     zs, zx = bars, bars2
     b=zs
     b.index = pd.to_datetime(b.index)
-    
+
     zs['day'] = zs.index.date
     dates = pd.concat([zx[zx['divCash'] != 0], zx[zx['splitFactor'] != 1]])
     zx['day'] = zx.index.date
     zs = zs[~zs['day'].isin(dates.index.date)]
     zx['yesterday close'] = zx['close'].shift(1)
-    zx = zx[['close', 'open', 'yesterday close', 'day']]
-    zx.columns = ['today close', 'today open', 'yesterday close', 'day']
+    zx['next open'] = zx['open'].shift(-1)
+    display(zx)
+    display(zs)
+    zx = zx[['close', 'open', 'yesterday close', 'next open', 'day']]
+    zx.columns = ['today close', 'today open', 'yesterday close', 'next open', 'day']
     a = pd.merge(zs, zx, on='day', how='left')
     a.index = zs.index
     a = a.dropna()
     a['intraday return fc'] = round(100*(a['open'] - a['yesterday close'] ) /a['yesterday close'],3)
     a['return to close'] = round(100* (a['today close'] - a['open']) / a['open'],3)
     a['intraday return fo'] = round(100*(a['open'] - a['today open'] ) /a['today open'],3)
+    a['return to next open'] = round(100*(a['next open'] - a['today close'])/a['today close'], 3)
     a = a.groupby('day').tail(1)
     if open.lower() == 'open':
-        a = a[['intraday return fo', 'Return to 15 Min', 'return to close']]
-        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close']
+        a = a[['intraday return fo', 'Return to 15 Min', 'return to close', 'return to next open']]
+        a.columns = ['Return from Open', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
         if amount > 0:
             a = a[a['Return from Open'] >= amount]
         elif amount < 0:
@@ -214,8 +218,8 @@ def returns(ticker, amount, time_str, open = 'open'):
         else:
             a = a.tail(20)
     else:
-        a = a[['intraday return fc', 'Return to 15 Min', 'return to close']]
-        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close']
+        a = a[['intraday return fc', 'Return to 15 Min', 'return to close', 'return to next open']]
+        a.columns = ['Return from Prev Close', 'Return to 15 Min', 'Return to Close', 'Return to Next Open']
         if amount > 0:
             a = a[a['Return from Prev Close'] >= amount]
         elif amount <0:
@@ -274,6 +278,8 @@ def show_all(ticker, data, disc, amt):
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
     
+import yfinance as yf
+
 def get_earnings(ticker, amount):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
@@ -311,16 +317,16 @@ def get_earnings(ticker, amount):
             return a1['adjClose'].iloc[0]
         else:
             return np.nan
-    df['1 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose'],2)
-    df['2 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose'],2)
-    df['1 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose'],2)
-    df['2 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose'],2)
-    df['3 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose'],2)
+    display(df)
+    df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['2 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['3 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose']
     df.index = df.index.strftime("%Y-%m-%d")
-    df['adjClose'] = round(df['adjClose'],2)
     df = df.reset_index()
     return df
-    
+
 def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0):
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
