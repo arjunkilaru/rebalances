@@ -196,8 +196,6 @@ def returns(ticker, amount, time_str, open = 'open'):
     zs = zs[~zs['day'].isin(dates.index.date)]
     zx['yesterday close'] = zx['close'].shift(1)
     zx['next open'] = zx['open'].shift(-1)
-    display(zx)
-    display(zs)
     zx = zx[['close', 'open', 'yesterday close', 'next open', 'day']]
     zx.columns = ['today close', 'today open', 'yesterday close', 'next open', 'day']
     a = pd.merge(zs, zx, on='day', how='left')
