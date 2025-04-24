@@ -304,8 +304,9 @@ def get_earnings(ticker, amount):
         df = df.tail(30)
     df = df[df['Prev Day Earnings'] == 'Yes']
     df = df.set_index('date')
-    df['Earnings Day Return'] = df['Close to Open'] + df['Open to Close']
-    df = df[['adjClose', 'Earnings Day Return']]
+    df['Earnings Day Return'] = df['Open to Close']
+    df = df[['adjClose', 'Close to Open', 'Earnings Day Return']]
+    df.columns = ['adjClose', 'Earnings Day Gap Up', 'Earnings Day Open to Close']
     def get_dfs(row, time):
         x = (row.name + BDay(time))
         a1 = (a[a.index == x])
@@ -315,13 +316,16 @@ def get_earnings(ticker, amount):
             return a1['adjClose'].iloc[0]
         else:
             return np.nan
-    df['1 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['2 Week Return'] = 100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['1 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['2 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose']
-    df['3 Month Return'] = 100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose']
+    df['Earnings Day Gap Up'] = round(df['Earnings Day Gap Up'], 3)
+    df['Earnings Day Open to Close'] = round(df['Earnings Day Open to Close'], 3)
+    df['1 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 5), axis = 1)) - df['adjClose']) / df['adjClose'],3)
+    df['2 Week Return'] = round(100*((df.apply(lambda x: get_dfs(x, 10), axis = 1)) - df['adjClose']) / df['adjClose'],3)
+    df['1 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 20), axis = 1)) - df['adjClose']) / df['adjClose'],3)
+    df['2 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 40), axis = 1)) - df['adjClose']) / df['adjClose'],3)
+    df['3 Month Return'] = round(100*((df.apply(lambda x: get_dfs(x, 60), axis = 1)) - df['adjClose']) / df['adjClose'],3)
     df.index = df.index.strftime("%Y-%m-%d")
-    df = df.reset_index()
+    df = df.reset_index().iloc[::-1]
+    del df['adjClose']
     return df
 
 def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0):
