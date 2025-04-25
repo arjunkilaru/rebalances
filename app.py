@@ -658,7 +658,7 @@ VALID_USERNAME_PASSWORD_PAIRS = {
     'merus' : '3ParkAvenue'
 }
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+#auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 server = app.server
 
 # Create input components
@@ -693,8 +693,8 @@ app.layout = html.Div([
             html.Hr(),
             html.H2("Off Open Return - Close to Open Gap Up"),
             html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
-            dbc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
-            dbc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
+            dcc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME'),
+            dcc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50'),
             dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
             dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value = None, style={'margin': '10px', 'width': '29.6%'}),
             html.Br(),
@@ -924,14 +924,27 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         return None
     
 @app.callback(
-Output('output-table', 'children'),
-[Input('submit-button', 'n_clicks')],
-[dash.dependencies.State('input-ticker', 'value'),
-dash.dependencies.State('input-amount', 'value'), dash.dependencies.State('input-high1', 'value'), dash.dependencies.State('input-ud', 'value'), State('weekday2-filter-dropdown', 'value'), State('input-pd', 'value')
-]
+    Output('output-table', 'children'),
+    [
+        Input('submit-button', 'n_clicks'),
+        Input('input-ticker', 'n_submit'),
+        Input('input-amount', 'n_submit'),
+        Input('input-high1', 'n_submit'),
+        Input('input-ud', 'n_submit'),
+        Input('input-pd', 'n_submit'),
+    ],
+    [
+        State('input-ticker', 'value'),
+        State('input-amount', 'value'),
+        State('input-high1', 'value'),
+        State('input-ud', 'value'),
+        State('weekday2-filter-dropdown', 'value'),
+        State('input-pd', 'value')
+    ]
 )
-def update_output(n_clicks, ticker, amount, high1, ud, weekday2, pds):
-    if n_clicks > 0 and ticker and amount is not None:
+def update_output(n_clicks, s1, s2, s3, s4, s5, ticker, amount, high1, ud, weekday2, pds):
+    if (n_clicks > 0 or s1 or s2 or s3 or s4 or s5) and ticker and amount is not None:
+
         try:
             amount = float(amount)
             df = get_everything(ticker, amount, high1, ud, weekday2, pds)            
