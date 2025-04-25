@@ -693,10 +693,16 @@ app.layout = html.Div([
             html.Hr(),
             html.H2("Off Open Return - Close to Open Gap Up"),
             html.P("Visualize returns off the open from when a stock gaps up or down (close->open return) a certain amount:"),
-            dcc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME', debounce=True, style={'margin': '10px', 'width': '29.6%'}),
-            dcc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50', debounce=True, style={'margin': '10px', 'width': '29.6%'}),
-            dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
-            dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+            html.Div([
+                dcc.Input(id='input-ticker', type='text', placeholder='Enter ticker, e.g., GME', debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+                dcc.Input(id='input-amount', type='number', placeholder='Enter percent gap up, e.g., 50', debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+            ]),
+            
+            # Row 2: Consecutive + Daily High
+            html.Div([
+                dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+                dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+            ]),
             html.Br(),
             dcc.Dropdown(id='weekday2-filter-dropdown', options=[
             {'label': 'No Weekday Filter', 'value': 'No Weekday Filter'},
