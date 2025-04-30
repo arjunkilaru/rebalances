@@ -17,7 +17,7 @@ config['session'] = True
 config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
 from pytz import timezone
-
+import numba
 import yfinance as yf
 api_key2 = 'PKXY2KAIRXBONPE3U5HA'
 api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
@@ -328,37 +328,85 @@ def get_earnings(ticker, amount):
     del df['adjClose']
     return df
 
-def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0):
+def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekday Filter", prevday = 0, rsi = 0):
+    if rsi is None:
+        rsi = 0
+    def rsi2(ticker, days):
+        today = datetime.today()
+        today = today.replace(hour=16, minute=0, second=0, microsecond=0)
+
+        # Calculate the date three years before today
+        three_years_ago = today - timedelta(days=365*8)
+
+        # Convert to ISO format for API call (without fractional seconds)
+        start_time = three_years_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_time = today.strftime('%Y-%m-%dT%H:%M:%SZ')
+        blip = np.random.choice([1,2,3])
+        if blip == 1:
+            zapi = api
+        elif blip == 2:
+            zapi = api2
+        else:
+            zapi = api3
+        # Fetch the bar data with a single API call
+        #bars = zapi.get_bars(ticker, '15Min', start=start_time, end=end_time).df
+        bars2 = client.get_dataframe(ticker, frequency='Daily', startDate= start_time, endDate= end_time)
+        bars2['Close to Open'] = bars2['adjOpen'].shift(-1)
+        bars2['Close to Open'] = round(100*(bars2['Close to Open'] - bars2['adjClose'])/bars2['adjClose'],3)
+        bars2['diff'] = bars2['adjClose'].diff(1)
+        bars2['gain'] = bars2['diff'].clip(lower=0).round(2)
+        bars2['loss'] = bars2['diff'].clip(upper=0).abs().round(2)
+        bars2['avg_gain'] = bars2['gain'].rolling(window=days, min_periods=days).mean()[:days+1]
+        bars2['avg_loss'] = bars2['loss'].rolling(window=days, min_periods=days).mean()[:days+1]
+        delta = bars2['adjClose'].diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.ewm(alpha=1/days, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1/days, adjust=False).mean()
+        bars2['rsi'] = 100 - 100/(1 + avg_gain/avg_loss)
+        bars2 = bars2[['adjClose', 'rsi']].dropna()
+        a =  bars2.reset_index()
+        a['date'] = a['date'].apply(lambda x: pd.to_datetime(x).strftime('%Y-%m-%d'))
+        return a
     td = pd.to_datetime('today')
     start = td - timedelta(days = 365*8)
     try:
         df = client.get_dataframe(ticker, frequency='Daily', startDate= start, endDate= td - BDay(1))
     except:
         return pd.DataFrame()
-    highs = []
-    at = []
-    lows = []
-    blp = df.copy().reset_index()
-    for i in range(0,len(blp)):
-        dfi = blp.head(i)
-        num = dfi[dfi['adjClose'] > blp['adjClose'][i]]
-        numlow = dfi[dfi['adjClose'] < blp['adjClose'][i]]
-        if len(num) == 0:
-            highs.append(i - 1)
-            at.append(True)       
-        else:
-            highs.append(i - num.index.tolist()[-1] - 1)
-            at.append(False)
-        if len(numlow) == 0:
-            lows.append(i-1)
-        else:
-            lows.append(-1* (i - numlow.index.tolist()[-1] - 1))
+    def compute_days(arr):
+        n = arr.shape[0]
+        highs = np.empty(n, np.int64)
+        lows = np.empty(n, np.int64)
+        for i in range(n):
+            last_hi = -1
+            last_lo = -1
+            for j in range(i):
+                if arr[j] > arr[i]:
+                    last_hi = j
+                if arr[j] < arr[i]:
+                    last_lo = j
+            # days since last higher
+            if last_hi == -1:
+                highs[i] = i - 1
+            else:
+                highs[i] = i - last_hi - 1
+            # days since last lower (negative)
+            if last_lo == -1:
+                lows[i] = -(i - 1)
+            else:
+                lows[i] = - (i - last_lo - 1)
+        return highs, lows
 
-    df['Prev Day Return'] = round(100*df['adjClose'].pct_change(),3).shift(1)
+    # usage inside get_everything, replacing the Python loop:
+    arr = df['adjClose'].values
+    highs, lows = compute_days(arr)
     df['# Day High'] = highs
     df['l'] = lows
-    df['# Day High'] = df['# Day High'].replace(0,np.nan)
-    df['# Day High'] = df['# Day High'].fillna(df['l'])
+    # then your existing replace/fill logic
+    df['# Day High'].replace(0, np.nan, inplace=True)
+    df['# Day High'].fillna(df['l'], inplace=True)
+    df['Prev Day Return'] = round(100*df['adjClose'].pct_change(),3).shift(1)
     df['Close to Open'] = round(((df['adjOpen'].shift(-1) - df['adjClose']) / df['adjClose'] * 100).shift(1),3)
     df['Open to Close'] = round(((df['adjClose'] - df['adjOpen']) / df['adjOpen'] * 100).shift(0),3)
     df['Price Change'] = df['adjClose'].diff()
@@ -367,6 +415,10 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['Consecutive Up/Down Days'] = df['Consecutive Up/Down Days'].shift(1)
     df['date'] = df.index
     df['Weekday'] = (pd.to_datetime(df['date'])).dt.day_name()
+    rsdf = rsi2(ticker, 3)
+    df = df.iloc[1:]
+    df['3D RSI'] = rsdf['rsi'].tolist()
+    df['3D RSI'] = round(df['3D RSI'].shift(1),2)
     if prevday is None:
         prevday = 0
     if prevday > 0:
@@ -383,6 +435,8 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
             df = df[df['Consecutive Up/Down Days'] >= consq]
         elif consq < 0:
             df = df[df['Consecutive Up/Down Days'] <= consq]
+    if rsi > 0:
+        df = df[df['3D RSI'] > rsi]
     if amount > 0:
         df = df[df['Close to Open'] >= amount]
     elif amount < 0:
@@ -448,7 +502,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['5 Min Return'] = [get_rets(df, 35) for df in all_dfs]
     df['10 Min Return'] = [get_rets(df, 40) for df in all_dfs]
     df['15 Min Return'] = [get_rets(df, 45) for df in all_dfs]
-    df = df[['Close to Open', '9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days', 'Prev Day Return']]
+    df = df[['Close to Open', '9:24 to Open', '1 Min Return', '3 Min Return', '5 Min Return', '10 Min Return', '15 Min Return', 'Open to Close', '# Day High', 'Consecutive Up/Down Days', 'Prev Day Return', '3D RSI']]
     df.index = df.index.strftime("%Y-%m-%d")
     df = df.iloc[::-1].reset_index()
     try:
@@ -702,6 +756,7 @@ app.layout = html.Div([
             html.Div([
                 dcc.Input(id='input-ud', placeholder='Consecutive Up/Down Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
                 dcc.Input(id='input-high1', placeholder='Daily High Filter (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
+                dcc.Input(id='input-rs1', placeholder='3 Day RSI (0 For Default)', type='number', value=None, debounce=True, style={'margin': '10px', 'width': '29.6%'}),
             ]),
             html.Br(),
             dcc.Dropdown(id='weekday2-filter-dropdown', options=[
@@ -936,6 +991,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         Input('input-ticker', 'n_submit'),
         Input('input-amount', 'n_submit'),
         Input('input-high1', 'n_submit'),
+        Input('input-rs1', 'n_submit'),
         Input('input-ud', 'n_submit'),
         Input('input-pd', 'n_submit'),
     ],
@@ -943,26 +999,26 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         State('input-ticker', 'value'),
         State('input-amount', 'value'),
         State('input-high1', 'value'),
+        State('input-rs1', 'value'),
         State('input-ud', 'value'),
         State('weekday2-filter-dropdown', 'value'),
         State('input-pd', 'value')
     ]
 )
-def update_output(n_clicks, s1, s2, s3, s4, s5, ticker, amount, high1, ud, weekday2, pds):
+def update_output(n_clicks, s1, s2, s3, s4, s5, s6, ticker, amount, high1, rsi, ud, weekday2, pds):
     if (n_clicks > 0 or s1 or s2 or s3 or s4 or s5) and ticker and amount is not None:
-
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud, weekday2, pds)            
+            df = get_everything(ticker, amount, high1, ud, weekday2, pds, rsi)            
             # Color coding for values in each column
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days', "Weekday", "Prev Day Return"]:
+                if column in ['date', 'Prev Day Earnings', '# Day High', 'Consecutive Up/Down Days', "Weekday", "Prev Day Return",'3D RSI']:
                     continue
                 df[column] = pd.to_numeric(df[column], errors='coerce')
             style_data_conditionals = []
             for column in df.columns:
-                if column in ['# Day High', 'Consecutive Up/Down Days', "Prev Day Return"]:
+                if column in ['# Day High', 'Consecutive Up/Down Days', "Prev Day Return",'3D RSI']:
                     continue
                 strin = "{" + column + "}"
                 style_data_conditionals.append({
@@ -991,13 +1047,13 @@ def update_output(n_clicks, s1, s2, s3, s4, s5, ticker, amount, high1, ud, weekd
     [Input('download-button', 'n_clicks')],
     [State('input-ticker', 'value'),
      State('weekday2-filter-dropdown', 'value'),
-     State('input-amount', 'value'), State('input-high1', 'value'), State('input-ud', 'value')]
+     State('input-amount', 'value'), State('input-high1', 'value'), State('input-ud', 'value'), State('input-rs1', 'value')]
 )
-def generate_excel(n_clicks, ticker, amount, high1, ud, weekday2):
+def generate_excel(n_clicks, ticker, amount, high1, ud, weekday2, rsi):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud, weekday2)
+            df = get_everything(ticker, amount, high1, ud, weekday2, rsi)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
