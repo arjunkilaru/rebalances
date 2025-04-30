@@ -437,6 +437,8 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
             df = df[df['Consecutive Up/Down Days'] <= consq]
     if rsi > 0:
         df = df[df['3D RSI'] > rsi]
+    if rsi < 0:
+        df = df[df['3D RSI'] < -1*rsi]
     if amount > 0:
         df = df[df['Close to Open'] >= amount]
     elif amount < 0:
