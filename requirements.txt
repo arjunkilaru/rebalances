@@ -12,3 +12,4 @@ dash-bootstrap-components
 xlsxwriter
 yfinance
 dash_auth
+numba
