@@ -75,6 +75,16 @@ columns_to_drop = ['Share_Inc', 'Share_Dec', 'Float_Inc', 'Float_Dec', 'Add', 'D
 fy.drop(columns=columns_to_drop, inplace=True)
 fyu.drop(columns=columns_to_drop, inplace=True)
 
+def stdevs(ticker, data, disc, amt):
+    if disc:
+        amt = amt*-1
+    data = data[data['adr'] == ticker][['date', 'premium']].dropna().drop_duplicates().drop_duplicates(subset = 'date')
+    mn = data['premium'].mean()
+    std = data['premium'].std()
+    if amt > mn:
+        return str(round(*(amt - mn)/std,3))
+    else:
+        return str(round(-1*(amt - mn)/std,3))
 
 del fy['As_of_date']
 del fyu['As_of_date']
@@ -714,7 +724,7 @@ VALID_USERNAME_PASSWORD_PAIRS = {
     'merus' : '3ParkAvenue'
 }
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+#auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 server = app.server
 
 # Create input components
@@ -919,8 +929,11 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
     if n_clicks > 0:
         disc_flag = 'discount' in flags
         df = show_all(ticker, data, disc_flag, amt_threshold)
-        if df.empty:
-            return html.P('No data available for the given parameters.')
+        
+        if isinstance(df, tuple):
+            df, err_msg = df
+            if df.empty:
+                return html.P('No data available for the given parameters.')
 
         # Find the maximum absolute value for the gradient scale.
         max_abs_value = df['Prem/Disc (%)'].abs().max()
@@ -939,7 +952,14 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
         formatted_date = last_date.strftime('%m/%Y')
         result_string += f". Coverage for this ticker beginning {formatted_date}."
         # Find the maximum absolute value for the gradient scale.
-
+        t2 = ticker.upper() + " EQUITY"
+        amt2 = amt_threshold*0.01
+        stdv = stdevs(t2, data, disc_flag, amt2)
+        if disc_flag:
+            t = 'discount'
+        else:
+            t = 'premium'
+        result_string += f" This {t} is {stdv} standard deviations from average for {ticker.upper()}"
         # Create a DataTable component to display the dataframe with conditional styling
         table = dash_table.DataTable(
             id='result-data',
