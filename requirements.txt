@@ -10,6 +10,6 @@ alpaca_trade_api
 tiingo
 dash-bootstrap-components
 xlsxwriter
-yfinance
+yfinance==0.2.36
 dash_auth
 numba
