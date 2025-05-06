@@ -959,7 +959,7 @@ def update_result_table(n_clicks, ticker, flags, amt_threshold, start_date, end_
             t = 'discount'
         else:
             t = 'premium'
-        result_string += f" This {t} is {stdv} standard deviations from average for {ticker.upper()}"
+        result_string += f" This {t} is {stdv} standard deviations from average for {ticker.upper()}."
         # Create a DataTable component to display the dataframe with conditional styling
         table = dash_table.DataTable(
             id='result-data',
