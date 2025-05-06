@@ -82,9 +82,10 @@ def stdevs(ticker, data, disc, amt):
     mn = data['premium'].mean()
     std = data['premium'].std()
     if amt > mn:
-        return str(round(*(amt - mn)/std,3))
+        return str(round((amt - mn) / std, 3))
     else:
-        return str(round(-1*(amt - mn)/std,3))
+        return str(round(-1 * (amt - mn) / std, 3))
+
 
 del fy['As_of_date']
 del fyu['As_of_date']
