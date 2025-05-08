@@ -725,7 +725,7 @@ VALID_USERNAME_PASSWORD_PAIRS = {
     'merus' : '3ParkAvenue'
 }
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-#auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 server = app.server
 
 # Create input components
