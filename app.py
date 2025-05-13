@@ -99,7 +99,7 @@ fyu.columns = ['Region', 'Ticker', 'Company', 'Effective', 'Status', 'Index Name
 data = pd.read_excel('all_adr_data.xlsx')
 
 def rsi(ticker, days, rs):
-    today = datetime.today() -BDay(1)
+    today = datetime.today()
     today = today.replace(hour=16, minute=0, second=0, microsecond=0)
 
     # Calculate the date three years before today
@@ -148,7 +148,7 @@ def rsi(ticker, days, rs):
             / days
     bars2['rs'] = bars2['avg_gain'] / bars2['avg_loss']
     bars2['rsi'] = round(100 - (100 / (1.0 + bars2['rs'])),3)
-    bars2 = bars2[['adjClose', 'rsi', 'Close to Open', '1dayret', '2dayret', '1weekret', '2weekret']].dropna()
+    bars2 = bars2[['adjClose', 'rsi', 'Close to Open', '1dayret', '2dayret', '1weekret', '2weekret']]
     if rs > 0:
         bars2 = bars2[bars2['rsi'] >= rs]
     elif rs < 0:
