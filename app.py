@@ -428,6 +428,7 @@ def get_everything(ticker, amount, dailyhigh = 0, consq = 0, weekday = "No Weekd
     df['Weekday'] = (pd.to_datetime(df['date'])).dt.day_name()
     rsdf = rsi2(ticker, 3)
     df = df.iloc[1:]
+    df = df.tail(len(rsdf))
     df['3D RSI'] = rsdf['rsi'].tolist()
     df['3D RSI'] = round(df['3D RSI'].shift(1),2)
     if prevday is None:
