@@ -1069,15 +1069,20 @@ def update_output(n_clicks, s1, s2, s3, s4, s5, s6, ticker, amount, high1, rsi, 
 @app.callback(
     Output('download-dataframe2-xlsx', 'data'),
     [Input('download-button', 'n_clicks')],
-    [State('input-ticker', 'value'),
-     State('weekday2-filter-dropdown', 'value'),
-     State('input-amount', 'value'), State('input-high1', 'value'), State('input-ud', 'value'), State('input-rs1', 'value')]
-)
-def generate_excel(n_clicks, ticker, amount, high1, ud, weekday2, rsi):
+    [
+        State('input-ticker', 'value'),
+        State('input-amount', 'value'),
+        State('input-high1', 'value'),
+        State('input-rs1', 'value'),
+        State('input-ud', 'value'),
+        State('weekday2-filter-dropdown', 'value'),
+        State('input-pd', 'value')
+    ])
+def generate_excel(n_clicks, ticker, amount, high1, rsi, ud, weekday2, pds):
     if n_clicks > 0 and ticker and amount is not None:
         try:
             amount = float(amount)
-            df = get_everything(ticker, amount, high1, ud, weekday2, rsi)
+            df = get_everything(ticker, amount, high1, ud, weekday2, pds, rsi)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Sheet1')
