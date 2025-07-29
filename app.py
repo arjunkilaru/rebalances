@@ -18,7 +18,6 @@ config['api_key'] = "7eef93d596bb5db06a125388ed2ae999a4332fd7"
 client = TiingoClient(config)
 from pytz import timezone
 import numba
-import yfinance as yf
 api_key2 = 'PKXY2KAIRXBONPE3U5HA'
 api_secret2 = 'HdaXpW8p4FzyRZSGrhY99BOpgPcASdmGrXXNY0hR'
 base_url = 'https://paper-api.alpaca.markets'
@@ -290,7 +289,6 @@ def show_all(ticker, data, disc, amt):
         df['Date'] = df['Date'].dt.strftime("%Y-%m-%d")
         return df 
     
-import yfinance as yf
 
 def get_earnings(ticker, amount):
     td = pd.to_datetime('today')
